@@ -2026,4 +2026,15 @@ class ModemController(
             current.log.forEach { appendLine(it) }
         }
     }
+    fun restartRadioAction() {
+        scope.launch {
+            runCatching { restartRadio() }
+        }
+    }
+
+    fun rebootModemAction() {
+        scope.launch {
+            runCatching { restartSimRadio() }
+        }
+    }
 }
