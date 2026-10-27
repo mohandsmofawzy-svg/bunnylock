@@ -164,14 +164,32 @@ class ModemController(
     private val onConnected: () -> Unit = {},
     private val onRefreshed: (ModemState) -> Unit = {},
 ) {
+    companion object {
+        private const val PREFERENCES_NAME = "bunnylock"
+        private const val GAME_MODE_ENABLED_KEY = "gameModeEnabled"
+
+        fun isGameModeEnabled(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .getBoolean(GAME_MODE_ENABLED_KEY, false)
+
+        fun setGameModeEnabled(context: Context, enabled: Boolean) {
+            context.applicationContext
+                .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(GAME_MODE_ENABLED_KEY, enabled)
+                .apply()
+        }
+    }
+
     private val context: Context = context.applicationContext
     private val englishContext: Context =
         this.context.createConfigurationContext(Configuration(this.context.resources.configuration).apply { setLocale(Locale.ENGLISH) })
     private var helper: PrivilegedClient = RootClient(this.context)
-    private val prefs = this.context.getSharedPreferences("bunnylock", Context.MODE_PRIVATE)
+    private val prefs = this.context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     val isGameModeEnabled: Boolean
-        get() = prefs.getBoolean("gameModeEnabled", false)
+        get() = isGameModeEnabled(context)
 
     private var poorSignalSamples = 0
     private var automatedRecovery: Job? = null
@@ -214,7 +232,7 @@ class ModemController(
     fun close() = helper.stop()
 
     fun setGameModeEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean("gameModeEnabled", enabled).apply()
+        if (isGameModeEnabled != enabled) setGameModeEnabled(context, enabled)
         if (!enabled) poorSignalSamples = 0
     }
 

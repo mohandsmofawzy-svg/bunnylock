@@ -9,6 +9,7 @@
     <string name="system_notify_line_nr_cell">NR cell: %1$s</string>
     <string name="system_notify_line_legacy_cell">2G/3G cell: %1$s</string>
     <string name="system_notify_toggle_locks">Toggle locks</string>
+    <string name="system_notify_toggle_game_mode">Toggle Game Mode</string>
     <string name="system_notify_restart_radio">Restart radio</string>
     <string name="system_notify_reboot_modem">Reboot modem</string>
 

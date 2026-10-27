@@ -23,6 +23,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val action = intent.action ?: return
         if (action !in ACTIONS) return
 
+        if (action == LockNotifier.ACTION_TOGGLE_GAME_MODE) {
+            val enabled = ModemController.isGameModeEnabled(context)
+            ModemController.setGameModeEnabled(context, !enabled)
+            return
+        }
+
         val pendingResult = goAsync()
         val appContext = context.applicationContext
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -94,6 +100,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 90_000L
-        val ACTIONS = setOf(LockNotifier.ACTION_TOGGLE_LOCKS, LockNotifier.ACTION_RESTART_RADIO, LockNotifier.ACTION_REBOOT_MODEM)
+        val ACTIONS =
+            setOf(
+                LockNotifier.ACTION_TOGGLE_LOCKS,
+                LockNotifier.ACTION_RESTART_RADIO,
+                LockNotifier.ACTION_REBOOT_MODEM,
+                LockNotifier.ACTION_TOGGLE_GAME_MODE,
+            )
     }
 }

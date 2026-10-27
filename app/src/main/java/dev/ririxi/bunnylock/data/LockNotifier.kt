@@ -24,6 +24,7 @@ object LockNotifier {
     const val ACTION_TOGGLE_LOCKS = "dev.ririxi.bunnylock.action.TOGGLE_LOCKS"
     const val ACTION_RESTART_RADIO = "dev.ririxi.bunnylock.action.RESTART_RADIO"
     const val ACTION_REBOOT_MODEM = "dev.ririxi.bunnylock.action.REBOOT_MODEM"
+    const val ACTION_TOGGLE_GAME_MODE = "dev.ririxi.bunnylock.action.TOGGLE_GAME_MODE"
     private const val CHANNEL_ID = "active_locks_silent_v2"
     private const val NOTIFICATION_ID = 1
     private const val PREFS = "bunnylock"
@@ -77,6 +78,7 @@ object LockNotifier {
             )
         val restartRadio = actionIntent(context, ACTION_RESTART_RADIO, 2)
         val rebootModem = actionIntent(context, ACTION_REBOOT_MODEM, 3)
+        val toggleGameMode = actionIntent(context, ACTION_TOGGLE_GAME_MODE, 5)
         val restore =
             PendingIntent.getBroadcast(
                 context,
@@ -99,6 +101,7 @@ object LockNotifier {
                 .setContentIntent(openApp)
                 .setDeleteIntent(restore)
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_locks), toggleLocks).build())
+                .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_game_mode), toggleGameMode).build())
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_restart_radio), restartRadio).build())
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_reboot_modem), rebootModem).build())
                 .build()

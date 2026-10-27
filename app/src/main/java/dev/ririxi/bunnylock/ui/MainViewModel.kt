@@ -47,6 +47,13 @@ class MainViewModel(
     private val app: Application,
 ) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("bunnylock", Context.MODE_PRIVATE)
+    private val gameModePreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "gameModeEnabled") {
+            val enabled = prefs.getBoolean("gameModeEnabled", false)
+            modem.setGameModeEnabled(enabled)
+            updateState { copy(gameModeEnabled = enabled) }
+        }
+    }
 
     private val _ui =
         MutableStateFlow(
@@ -79,6 +86,7 @@ class MainViewModel(
     val events = merge(_events, modem.events)
 
     init {
+        prefs.registerOnSharedPreferenceChangeListener(gameModePreferenceListener)
         modem.connect()
         checkForUpdate()
     }
@@ -113,6 +121,7 @@ class MainViewModel(
     }
 
     override fun onCleared() {
+        prefs.unregisterOnSharedPreferenceChangeListener(gameModePreferenceListener)
         stopWatchingShizuku()
         modem.close()
     }
@@ -217,7 +226,6 @@ class MainViewModel(
 
     fun setGameModeEnabled(enabled: Boolean) {
         modem.setGameModeEnabled(enabled)
-        updateState { copy(gameModeEnabled = enabled) }
     }
 
     fun setAtNode(node: String) = modem.setAtNode(node)
