@@ -14,7 +14,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,8 +50,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -81,15 +82,7 @@ fun HomeScreen(
     goTo: (Tab) -> Unit,
 ) {
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-            Hero(
-                state,
-                onUnlock = vm::unlockEverything,
-                onBands = { goTo(Tab.BANDS) },
-                onCell = { goTo(Tab.CELL) },
-                onGameMode = vm::setGameModeEnabled,
-            )
-        }
+        item { Hero(state, onUnlock = vm::unlockEverything, onBands = { goTo(Tab.BANDS) }, onCell = { goTo(Tab.CELL) },onGameMode = { enabled -> vm.setGameModeEnabled(enabled) } ) }
 
         val carriers = state.modem.carriers
         item {
@@ -246,12 +239,11 @@ private fun GameModeButton(
             pulse.animateTo(1f, tween(800))
         }
     }
-    val shape = RoundedCornerShape(16.dp)
-    val backgroundColor by animateColorAsState(
-        if (enabled) Color(0xFF6D101A) else MaterialTheme.colorScheme.surfaceContainerHighest,
-        label = "gameModeBackground",
-    )
-    val borderColor = if (enabled) Color(0xFFFF3048) else MaterialTheme.colorScheme.outlineVariant
+    val backgroundColor = if (enabled) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
     val stateLabel = stringResource(if (enabled) R.string.home_game_mode_on else R.string.home_game_mode_off)
     Row(
         modifier =
@@ -262,9 +254,11 @@ private fun GameModeButton(
                     scaleX = pulse.value
                     scaleY = pulse.value
                 }
-                .clip(shape)
-                .background(backgroundColor, shape)
-                .border(if (enabled) 2.dp else 1.dp, borderColor, shape)
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    color = backgroundColor,
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .toggleable(
                     value = enabled,
                     role = Role.Switch,

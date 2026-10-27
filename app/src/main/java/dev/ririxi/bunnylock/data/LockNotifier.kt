@@ -17,6 +17,7 @@ import dev.ririxi.bunnylock.system.RebootModemTileService
 import dev.ririxi.bunnylock.system.RestartRadioTileService
 import dev.ririxi.bunnylock.system.NotificationRestoreReceiver
 import dev.ririxi.bunnylock.system.ToggleLocksTileService
+import dev.ririxi.bunnylock.ui.NotificationActionReceiver
 import org.json.JSONArray
 
 object LockNotifier {
