@@ -23,7 +23,11 @@ object ProfileStore {
                     Group.entries.mapNotNull { group ->
                         if (!bandsJson.has(group.name)) return@mapNotNull null
                         val values = bandsJson.getJSONArray(group.name)
-                        group to buildSet { for (bandIndex in 0 until values.length()) add(values.getInt(bandIndex)) }
+                        group to buildSet<Int> {
+                            for (bandIndex in 0 until values.length()) {
+                                add(values.getInt(bandIndex))
+                            }
+                        }
                     }.toMap()
                 add(
                     LockProfile(
