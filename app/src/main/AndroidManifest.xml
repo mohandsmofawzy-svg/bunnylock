@@ -30,6 +30,44 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".system.NotificationRestoreReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".system.ToggleLocksTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_lock"
+            android:label="@string/tile_toggle_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <service
+            android:name=".system.RestartRadioTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_lock"
+            android:label="@string/tile_restart_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".system.RebootModemTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_lock"
+            android:label="@string/tile_reboot_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"

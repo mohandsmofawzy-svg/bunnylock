@@ -40,6 +40,9 @@ Depending on the phone and backend, bunnylock can:
 - lock to a mobile network (PLMN)
 - re-attach, restart the radio, or reboot the modem
 - clear active locks with **Unlock all**
+- save local band and cell-lock profiles for quick reuse
+- use a silent active-lock notification and separate Quick Settings tiles for toggling locks, restarting the radio, and rebooting the modem
+- choose Arabic, Polish, Simplified Chinese, English, or the system language
 
 See [Tested devices](TESTED_DEVICES.md) for combinations that have been tried on real phones.
 
@@ -67,9 +70,12 @@ Available features still depend on what the modem and firmware accept. In partic
 1. Grant root access, or start Shizuku and allow bunnylock to use it.
 2. Pick the SIM you want to control.
 3. Use **Bands** to select bands, or **Cell lock** to enter an EARFCN, ARFCN, or PCI.
-4. Use **Unlock all** on the Home screen to return to the default configuration.
+4. To save a setup, select preferred bands and enter any cell-lock values, open **Profiles**, choose **Save current setup**, and give it a name. Tap a saved profile to apply it; applying restores all saved band groups and clears an existing cell lock when the profile has no cell values.
+5. Add the **Toggle bunnylock**, **Restart radio**, and **Reboot modem** tiles from the Quick Settings tile editor. Android gives each tile one tap action, so these are separate tiles. The toggle tile unlocks active locks, or applies the first saved profile when no lock is active.
+6. Use **Unlock all** on the Home screen to return to the default configuration.
 
 Locking a band or cell that your carrier does not use can leave the phone without service. **Unlock all** works offline, so keep it in mind while experimenting.
+The low-importance notification appears while locks are active and includes the same quick actions. Android requires notification permission on Android 13 and later.
 
 If something fails, copy the diagnostics from **Tools**. They include the detected chipset, backend, available interfaces, and recent operation log.
 

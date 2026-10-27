@@ -10,6 +10,7 @@ import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.data.Cell
 import dev.ririxi.bunnylock.data.LockNotifier
+import dev.ririxi.bunnylock.data.ProfileStore
 import dev.ririxi.bunnylock.data.Rat
 import dev.ririxi.bunnylock.data.Updates
 import dev.ririxi.bunnylock.modem.Backend
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 private const val MAX_TOOL_OUTPUT_CHARS = 8000
 
@@ -49,9 +51,9 @@ class MainViewModel(
     private val _ui =
         MutableStateFlow(
             UiState(
-                dynamicColor = prefs.getBoolean("dynamicColor", true),
                 checkUpdates = prefs.getBoolean("checkUpdates", true),
                 favoriteBands = loadFavoriteBands(),
+                profiles = ProfileStore.load(app),
             ),
         )
 
@@ -61,10 +63,10 @@ class MainViewModel(
 
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
 
-    private var pendingUnlock = false
+    private var pendingSystemAction: String? = null
 
     private val modem =
-        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onConnected = ::unlockIfPending, onRefreshed = ::refreshed)
+        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onConnected = ::runPendingSystemAction, onRefreshed = ::refreshed)
 
     // Shizuku hands over its binder a moment after the app starts, or whenever it is started later, so a failed attempt is redone then.
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
@@ -135,15 +137,37 @@ class MainViewModel(
 
     suspend fun refreshConnection() = modem.refreshConnection()
 
-    /** "Unlock all" from the notification. Waits for the helper if the app was just started. */
-    fun unlockFromNotification() {
-        if (modem.state.value.root == RootState.Granted && modem.helperRunning) unlockEverything() else pendingUnlock = true
+    fun handleSystemAction(action: String?) {
+        if (action == null || action !in setOf(
+                LockNotifier.ACTION_UNLOCK_ALL,
+                LockNotifier.ACTION_TOGGLE_LOCKS,
+                LockNotifier.ACTION_RESTART_RADIO,
+                LockNotifier.ACTION_REBOOT_MODEM,
+            )
+        ) {
+            return
+        }
+        if (modem.state.value.root == RootState.Granted && modem.helperRunning) {
+            runSystemAction(action)
+        } else {
+            pendingSystemAction = action
+            modem.reconnect()
+        }
     }
 
-    private fun unlockIfPending() {
-        if (!pendingUnlock) return
-        pendingUnlock = false
-        unlockEverything()
+    private fun runPendingSystemAction() {
+        val action = pendingSystemAction ?: return
+        pendingSystemAction = null
+        runSystemAction(action)
+    }
+
+    private fun runSystemAction(action: String) {
+        when (action) {
+            LockNotifier.ACTION_UNLOCK_ALL -> unlockEverything()
+            LockNotifier.ACTION_TOGGLE_LOCKS -> toggleLocks()
+            LockNotifier.ACTION_RESTART_RADIO -> radioCycle()
+            LockNotifier.ACTION_REBOOT_MODEM -> rebootModem()
+        }
     }
 
     // A refresh replaces the band groups, so picks that weren't applied start over.
@@ -189,11 +213,6 @@ class MainViewModel(
     fun setBackend(backend: Backend) = modem.setBackend(backend)
 
     fun setPersist(enabled: Boolean) = modem.setPersist(enabled)
-
-    fun setDynamicColor(enabled: Boolean) {
-        prefs.edit().putBoolean("dynamicColor", enabled).apply()
-        updateState { copy(dynamicColor = enabled) }
-    }
 
     fun setAtNode(node: String) = modem.setAtNode(node)
 
@@ -348,6 +367,79 @@ class MainViewModel(
     fun reattach() = launchAction { modem.reattach() }
 
     fun rebootModem() = launchAction(refreshAfter = false) { modem.rebootModem() }
+
+    fun saveProfile(name: String) {
+        val cleanName = name.trim()
+        if (cleanName.isEmpty()) {
+            _events.tryEmit(app.getString(R.string.profiles_name_required))
+            return
+        }
+        val bands =
+            buildMap {
+                modem.state.value.groups.forEach { groupState ->
+                    put(groupState.group, ui.bandSelections[groupState.group] ?: groupState.allowed)
+                }
+            }
+        val cell = ui.form.takeIf(::hasCellFormInput)
+        if (bands.isEmpty() && cell == null) {
+            _events.tryEmit(app.getString(R.string.profiles_nothing_to_save))
+            return
+        }
+        val profile = LockProfile(UUID.randomUUID().toString(), cleanName, bands, cell)
+        val updated = ui.profiles + profile
+        ProfileStore.save(app, updated)
+        updateState { copy(profiles = updated) }
+        _events.tryEmit(app.getString(R.string.profiles_saved, cleanName))
+    }
+
+    fun deleteProfile(profile: LockProfile) {
+        val updated = ui.profiles.filterNot { it.id == profile.id }
+        ProfileStore.save(app, updated)
+        updateState { copy(profiles = updated) }
+    }
+
+    fun applyProfile(profile: LockProfile) {
+        profile.cell?.let { form -> updateState { copy(form = form) } }
+        launchAction {
+            profile.bands.forEach { (group, bands) ->
+                if (bands.isEmpty()) modem.unlockBands(group) else modem.lockBands(group, bands)
+            }
+            if (profile.cell == null) {
+                modem.unlockCells()
+            } else {
+                val form = profile.cell
+                modem.lockCells(
+                    CellLockRequest(
+                        rat = if (modem.state.value.supports5g) form.rat else LockRat.LTE,
+                        earfcn = form.lteEarfcn.toLongOrNull(),
+                        ltePcis = parseInts(form.ltePcis),
+                        nrArfcn = form.nrArfcn.toLongOrNull(),
+                        nrPcis = parseInts(form.nrPcis),
+                        nrBand = form.nrBand ?: form.nrCandidates.firstOrNull(),
+                        nrScs = form.nrScs,
+                    ),
+                )
+            }
+            app.getString(R.string.profiles_applied, profile.name)
+        }
+    }
+
+    fun toggleLocks() {
+        val current = modem.state.value
+        if (current.anyBandLock || current.anyCellLock || current.anyPlmnLock) {
+            unlockEverything()
+            return
+        }
+        val profile = ui.profiles.firstOrNull()
+        if (profile == null) {
+            _events.tryEmit(app.getString(R.string.profiles_no_profile_for_tile))
+        } else {
+            applyProfile(profile)
+        }
+    }
+
+    private fun hasCellFormInput(form: CellForm) =
+        form.lteEarfcn.isNotBlank() || form.ltePcis.isNotBlank() || form.nrArfcn.isNotBlank() || form.nrPcis.isNotBlank()
 
     fun samsungMenu() = launchAction(refreshAfter = false) { modem.samsungMenu() }
 

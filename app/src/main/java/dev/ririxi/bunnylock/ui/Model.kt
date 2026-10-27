@@ -31,6 +31,13 @@ data class CellForm(
     val nrCandidates: List<Int> get() = nrArfcn.toIntOrNull()?.let { Bands.nrBandsOf(it) } ?: emptyList()
 }
 
+data class LockProfile(
+    val id: String,
+    val name: String,
+    val bands: Map<Group, Set<Int>>,
+    val cell: CellForm?,
+)
+
 data class UiState(
     val modem: ModemState = ModemState(),
     val busy: Boolean = false,
@@ -38,11 +45,11 @@ data class UiState(
     val form: CellForm = CellForm(),
     val plmnMcc: String = "",
     val plmnMnc: String = "",
-    val dynamicColor: Boolean = true,
     val checkUpdates: Boolean = true,
     val toolOutput: String = "",
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
+    val profiles: List<LockProfile> = emptyList(),
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

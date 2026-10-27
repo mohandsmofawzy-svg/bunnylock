@@ -1,8 +1,13 @@
 <resources>
-    <style name="Theme.Bunnylock" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Bunnylock" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/burgundy</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
-    <color name="bg">#F9F9FF</color>
-    <color name="icon_bg">#101510</color>
-    <color name="icon_fg">#5BE584</color>
+    <color name="bg">#000000</color>
+    <color name="burgundy">#800020</color>
+    <color name="icon_bg">#000000</color>
+    <color name="icon_fg">#800020</color>
 </resources>

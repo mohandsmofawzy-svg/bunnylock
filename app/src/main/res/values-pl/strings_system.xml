@@ -8,6 +8,9 @@
     <string name="system_notify_line_lte_cell">Komórka LTE: %1$s</string>
     <string name="system_notify_line_nr_cell">Komórka NR: %1$s</string>
     <string name="system_notify_line_legacy_cell">Komórka 2G/3G: %1$s</string>
+    <string name="system_notify_toggle_locks">Przełącz blokady</string>
+    <string name="system_notify_restart_radio">Uruchom radio ponownie</string>
+    <string name="system_notify_reboot_modem">Uruchom modem ponownie</string>
 
     <string name="system_helper_not_running">Proces pomocniczy nie działa, więc nic nie zmieniono. Łączenie ponownie…</string>
     <string name="system_at_replied">Modem odpowiedział. Wynik jest poniżej.</string>

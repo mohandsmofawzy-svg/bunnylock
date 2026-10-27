@@ -3,17 +3,16 @@ package dev.ririxi.bunnylock
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ririxi.bunnylock.data.AppLanguage
-import dev.ririxi.bunnylock.data.LockNotifier
 import dev.ririxi.bunnylock.ui.BunnyApp
 import dev.ririxi.bunnylock.ui.MainViewModel
 import dev.ririxi.bunnylock.ui.theme.BunnyTheme
@@ -32,7 +31,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
             val wanted =
@@ -46,8 +48,7 @@ class MainActivity : ComponentActivity() {
             handleNotificationAction(intent)
         }
         setContent {
-            val state by vm.state.collectAsStateWithLifecycle()
-            BunnyTheme(dynamicColor = state.dynamicColor) {
+            BunnyTheme {
                 BunnyApp(vm)
             }
         }
@@ -60,10 +61,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleNotificationAction(intent)
     }
 
     private fun handleNotificationAction(intent: Intent?) {
-        if (intent?.action == LockNotifier.ACTION_UNLOCK_ALL) vm.unlockFromNotification()
+        vm.handleSystemAction(intent?.action)
     }
 }

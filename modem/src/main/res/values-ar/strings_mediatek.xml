@@ -1,0 +1,22 @@
+<resources>
+    <string name="at_open_failed">تعذر فتح %1$s (%2$s).</string>
+    <string name="at_not_accepted">لم يقبل المودم %1$s. الرد: %2$s</string>
+    <string name="at_read_failed">تعذرت القراءة من %1$s (%2$s).</string>
+    <string name="at_no_reply">لم يرد %2$s على الأمر %1$s.</string>
+    <string name="mtk_no_network_mode">لم يذكر المودم وضع الشبكة.</string>
+    <string name="mtk_erat_no_mode">لا يتضمن AT+ERAT وضعًا لهذا التكوين.</string>
+    <string name="mtk_epbse_unreadable">%1$s (ردّ %2$s: %3$s).</string>
+    <string name="mtk_no_band_lock">لا يدعم منفذ AT ‏%1$s قفل النطاقات</string>
+    <string name="mtk_current_bands_unreadable">تعذرت قراءة النطاقات الحالية من %1$s</string>
+    <string name="mtk_no_epbseh">لا يدعم هذا المودم AT+EPBSEH، وقد لا يدعم 5G.</string>
+    <string name="oem_working_through">جارٍ العمل عبر %1$s.</string>
+    <string name="oem_no_passthrough">لم يستجب أي مسار لتمرير طلبات الشركة المصنّعة على هذا الهاتف.</string>
+    <string name="oem_no_ril_passthrough">لا يتوفر تمرير RIL على هذا الهاتف.</string>
+    <string name="oem_no_raw_route">لا يوجد مسار طلب OEM يمكن تجربته على هذا الهاتف.</string>
+    <string name="oem_no_callback_reply">لا يوجد رد callback على %1$s.</string>
+    <string name="oem_timeout">لم يرد المودم على %1$s في الوقت المحدد.</string>
+    <string name="oem_service_refused">رفضت الخدمة %1$s (%2$s).</string>
+    <string name="oem_probe_failed">فشل %1$s: %2$s</string>
+    <string name="oem_probe_replied">ردّ %1$s: %2$s</string>
+    <string name="oem_probe_silent">لم يرد %1$s.</string>
+</resources>

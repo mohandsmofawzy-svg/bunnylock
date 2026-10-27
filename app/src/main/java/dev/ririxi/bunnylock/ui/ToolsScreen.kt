@@ -59,7 +59,6 @@ import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.DeviceInfo
 import dev.ririxi.bunnylock.modem.andList
 import dev.ririxi.bunnylock.modem.string
-import dev.ririxi.bunnylock.ui.theme.dynamicColorAvailable
 
 private val AT_COMMAND_PRESETS = listOf("ATI", "AT+EPBSE?", "AT+EPBSEH?", "AT+EMMCHLCK?", "AT+GOOGGETNV=\"NR.CONFIG.MODE\"")
 
@@ -110,23 +109,6 @@ fun ToolsScreen(
                             stringResource(R.string.tools_persist_hint),
                             checked = state.modem.persist,
                             onCheckedChange = vm::setPersist,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (dynamicColorAvailable) {
-            item {
-                SectionHeader(stringResource(R.string.tools_appearance))
-                Segmented {
-                    item {
-                        SwitchItem(
-                            it,
-                            stringResource(R.string.tools_dynamic_color),
-                            stringResource(R.string.tools_dynamic_color_hint),
-                            checked = state.dynamicColor,
-                            onCheckedChange = vm::setDynamicColor,
                         )
                     }
                 }
@@ -473,6 +455,7 @@ private fun languageName(tag: String): String =
         "en" -> stringResource(R.string.tools_language_en)
         "pl" -> stringResource(R.string.tools_language_pl)
         "zh-CN" -> stringResource(R.string.tools_language_zh_cn)
+        "ar" -> stringResource(R.string.tools_language_ar)
         else -> tag
     }
 

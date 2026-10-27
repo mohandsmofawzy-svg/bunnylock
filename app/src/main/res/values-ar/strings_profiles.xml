@@ -1,0 +1,26 @@
+<resources>
+    <string name="profiles_title">ملفات الألعاب</string>
+    <string name="profiles_description">اختر النطاقات من تبويب النطاقات وأدخل قيم EARFCN وPCI في قفل الخلية، ثم احفظها محليًا باسم تختاره. يعيد التطبيق ضبط مجموعات النطاقات المحفوظة ويمسح قفل الخلية الحالي إذا لم تُحفظ قيم للخلية.</string>
+    <string name="profiles_save_current">حفظ الإعداد الحالي</string>
+    <string name="profiles_empty">لا توجد ملفات محفوظة. اختر نطاقات أو أدخل قفل خلية ثم احفظ ملفًا.</string>
+    <string name="profiles_apply">تطبيق</string>
+    <string name="profiles_delete">حذف</string>
+    <string name="profiles_save_title">حفظ ملف</string>
+    <string name="profiles_save_hint">سمّ إعداد النطاقات وقفل الخلية، مثل PUBG أو المنزل.</string>
+    <string name="profiles_name">اسم الملف</string>
+    <string name="profiles_save">حفظ</string>
+    <string name="profiles_cancel">إلغاء</string>
+    <string name="profiles_no_bands">لا توجد اختيارات نطاقات</string>
+    <string name="profiles_no_cell">لا يوجد قفل خلية</string>
+    <string name="profiles_summary">%1$s\n%2$s</string>
+    <string name="profiles_name_required">أدخل اسمًا للملف.</string>
+    <string name="profiles_nothing_to_save">اختر نطاقات أو أدخل قفل خلية قبل حفظ الملف.</string>
+    <string name="profiles_saved">حُفظ الملف «%1$s».</string>
+    <string name="profiles_applied">طُبق الملف «%1$s».</string>
+    <string name="profiles_no_profile_for_tile">احفظ ملفًا أولًا لاستخدام لوحة تبديل الأقفال.</string>
+    <string name="tile_toggle_label">تبديل أقفال bunnylock</string>
+    <string name="tile_restart_label">إعادة تشغيل الراديو</string>
+    <string name="tile_reboot_label">إعادة تشغيل المودم</string>
+    <string name="tile_locked">الأقفال نشطة</string>
+    <string name="tile_unlocked">لا توجد أقفال نشطة</string>
+</resources>

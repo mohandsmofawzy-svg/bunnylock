@@ -1,13 +1,16 @@
 <resources>
     <string name="system_notify_channel_name">Active locks</string>
     <string name="system_notify_channel_description">Shows which bands, cells or networks bunnylock has locked.</string>
-    <string name="system_notify_title">bunnylock: locked</string>
+    <string name="system_notify_title">bunnylock: locks active</string>
     <string name="system_notify_line_separator">", "</string>
     <string name="system_notify_line_bands">%1$s: %2$s</string>
     <string name="system_notify_line_network">Network: %1$s</string>
     <string name="system_notify_line_lte_cell">LTE cell: %1$s</string>
     <string name="system_notify_line_nr_cell">NR cell: %1$s</string>
     <string name="system_notify_line_legacy_cell">2G/3G cell: %1$s</string>
+    <string name="system_notify_toggle_locks">Toggle locks</string>
+    <string name="system_notify_restart_radio">Restart radio</string>
+    <string name="system_notify_reboot_modem">Reboot modem</string>
 
     <string name="system_helper_not_running">The helper isn\'t running, so nothing was changed. Reconnecting.</string>
     <string name="system_at_replied">The modem replied. See the output below.</string>

@@ -1,0 +1,32 @@
+<resources>
+    <string name="cell_network_header">الشبكة (PLMN)</string>
+    <string name="cell_current_lock">قفل الخلية الحالي</string>
+    <string name="cell_clear_lock">مسح قفل الخلية</string>
+    <string name="cell_lock_to">القفل إلى</string>
+    <string name="cell_visible">الخلايا المرئية (اضغط لملء الحقول)</string>
+    <string name="cell_none_found">لم يتم العثور على خلايا</string>
+    <string name="cell_none_found_hint">يتطلب فحص الخلايا صلاحية الموقع.</string>
+    <string name="cell_plmn_automatic">تلقائي</string>
+    <string name="cell_plmn_locked_to">مقفل على %1$s</string>
+    <string name="cell_not_registered">غير مسجل على شبكة.</string>
+    <string name="cell_connected">متصل بـ %1$s.</string>
+    <string name="cell_connected_named">متصل بـ %1$s (%2$s).</string>
+    <string name="cell_lock_ignored">تم التجاهل</string>
+    <string name="cell_lock_locked">مقفل</string>
+    <string name="cell_lock_none">غير مقفل</string>
+    <string name="cell_lock_stray">قبل Android القفل، لكن الهاتف يستخدم %1$s.</string>
+    <string name="cell_lock_pinned">المودم مثبت على خلية محددة.</string>
+    <string name="cell_lock_free">يختار المودم الخلايا تلقائيًا.</string>
+    <string name="cell_plmn_hint_qualcomm">تُجرّب QMI أولًا. إذا رفض المودم، يُستخدم اختيار الشبكة في Android.</string>
+    <string name="cell_plmn_hint_android">يستخدم اختيار الشبكة اليدوي في Android، ويظل بعد إعادة التشغيل.</string>
+    <string name="cell_hint_qualcomm">يقفل LTE وNR على PCI (خلية SA الأساسية أو NSA الثانوية). اترك PCI الخاص بـ NR فارغًا لقفل التردد فقط، وافصل عدة قيم بفواصل.</string>
+    <string name="cell_hint_mtk_at">يستخدم AT+EMMCHLCK لقفل واحد في كل مرة. PCI اختياري ويُعاد تشغيل الراديو لتطبيق القفل.</string>
+    <string name="cell_hint_mtk_hal">لا يدعم هذا المودم AT+EMMCHLCK، لذا يُقفل التردد (ARFCN) عبر واجهة الراديو. لا يمكن قفل PCI وقد تتجاهل بعض المودمات ذلك.</string>
+    <string name="cell_hint_hal">يقفل التردد (ARFCN) عبر واجهة الراديو. لا يمكن لهذه الواجهة قفل PCI وقد تتجاهل بعض المودمات القناة.</string>
+    <string name="cell_lte_channel">النطاق B%1$d عند %2$.1f ميغاهرتز</string>
+    <string name="cell_lte_anchor">مرساة LTE</string>
+    <string name="cell_nr_scg">NR ثانوي (SCG)</string>
+    <string name="cell_pcis">معرّفات PCI</string>
+    <string name="cell_band">النطاق</string>
+    <string name="cell_scs">تباعد الحوامل الفرعية (كيلوهرتز)</string>
+</resources>

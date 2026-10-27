@@ -1,0 +1,72 @@
+<resources>
+    <string name="tools_backend">الواجهة الخلفية</string>
+    <string name="tools_backend_needs_root">تتطلب root</string>
+    <string name="tools_backend_detected">مكتشفة لهذا الجهاز</string>
+    <string name="tools_persist">الإبقاء على أقفال النطاقات بعد إعادة التشغيل</string>
+    <string name="tools_persist_hint">عند إيقاف هذا الخيار، تُمسح الأقفال بعد إعادة التشغيل.</string>
+    <string name="tools_appearance">المظهر</string>
+    <string name="tools_dynamic_color">المظهر الداكن</string>
+    <string name="tools_dynamic_color_hint">أسطح سوداء بالكامل ولمسات نبيذية ونص أبيض عالي التباين.</string>
+    <string name="tools_language">اللغة</string>
+    <string name="tools_language_system">لغة النظام</string>
+    <string name="tools_language_system_hint">يتبع لغة الهاتف.</string>
+    <string name="tools_language_helper_english">قد تظل بعض رسائل المساعد الجذرية باللغة الإنجليزية.</string>
+    <string name="tools_language_en" translatable="false">English</string>
+    <string name="tools_language_pl" translatable="false">Polski</string>
+    <string name="tools_language_zh_cn" translatable="false">简体中文</string>
+    <string name="tools_language_ar" translatable="false">العربية</string>
+    <string name="tools_updates">التحديثات</string>
+    <string name="tools_check_updates">التحقق من التحديثات</string>
+    <string name="tools_check_updates_hint">البحث عن إصدار جديد على GitHub عند بدء التطبيق.</string>
+    <string name="tools_radio">الراديو</string>
+    <string name="tools_restart_radio">إعادة تشغيل الراديو</string>
+    <string name="tools_restart_radio_hint">يُشغّل وضع الطيران ثم يوقفه.</string>
+    <string name="tools_reattach">إعادة الاتصال بالشبكة</string>
+    <string name="tools_reattach_hint">يفصل اتصال البيانات ثم يعيد الاتصال عبر QMI.</string>
+    <string name="tools_reboot_modem">إعادة تشغيل المودم</string>
+    <string name="tools_reboot_modem_hint">تُعاد تشغيل الشريحة أيضًا.</string>
+    <string name="tools_samsung_menu">قائمة نطاقات Samsung</string>
+    <string name="tools_samsung_menu_hint">يفتح إعدادات النطاقات المخفية في Samsung.</string>
+    <string name="tools_at_console">وحدة تحكم AT</string>
+    <string name="tools_at_port">منفذ AT</string>
+    <string name="tools_at_command">الأمر</string>
+    <string name="tools_at_ports_ril">ril:1 وril:2 (عبر RIL)</string>
+    <string name="tools_at_ports_none">لم يُعثر على منافذ AT.</string>
+    <string name="tools_at_ports_found">عُثر على %1$s.</string>
+    <string name="tools_qmi_console">وحدة تحكم QMI</string>
+    <string name="tools_qmi_service">الخدمة</string>
+    <string name="tools_qmi_message">الرسالة (hex)</string>
+    <string name="tools_qmi_payload">بيانات TLV (hex)</string>
+    <string name="tools_qmi_nas_hint">تتصل NAS (الخدمة 3) بالشريحة المحددة.</string>
+    <string name="tools_output">النتيجة</string>
+    <string name="tools_clear">مسح</string>
+    <string name="tools_copy_diagnostics_hint">تفاصيل الجهاز واختبار تمرير الأوامر والسجل</string>
+    <string name="tools_access">الوصول</string>
+    <string name="tools_passthrough">تمرير أوامر المودم</string>
+    <string name="tools_services_checked">الخدمات التي تم فحصها (%1$d)</string>
+    <string name="tools_collapse">طي</string>
+    <string name="tools_expand">توسيع</string>
+    <string name="tools_qmi_over_qrtr">QMI عبر QRTR</string>
+    <string name="tools_yes">نعم</string>
+    <string name="tools_no">لا</string>
+    <string name="tools_hal_channel_lock">واجهة قفل القنوات HAL</string>
+    <string name="tools_present">متاح</string>
+    <string name="tools_absent">غير متاح</string>
+    <string name="tools_log">السجل</string>
+    <string name="tools_about">حول التطبيق</string>
+    <string name="tools_author">بواسطة @ririxi، مطور BTSearch.pl</string>
+    <string name="tools_version">الإصدار %1$s</string>
+    <string name="tools_bunny_fact">معلومة عن الأرانب: %1$s</string>
+    <string-array name="bunny_facts">
+        <item>أسنان الأرنب تنمو باستمرار، لذا يحتاج إلى المضغ ليبريها.</item>
+        <item>يقفز الأرنب السعيد ويلتف في الهواء فيما يُعرف باسم «binky».</item>
+        <item>ترى الأرانب معظم ما حولها، باستثناء مساحة صغيرة أمام الأنف مباشرة.</item>
+        <item>لا تستطيع الأرانب التقيؤ، لذا قد يكون تناول شيء ضار خطرًا عليها.</item>
+        <item>يطحن الأرنب المرتاح أسنانه برفق كأنه يخرخر.</item>
+        <item>تُسمى صغار الأرانب «kits».</item>
+        <item>تنشط الأرانب غالبًا عند الفجر والغسق.</item>
+        <item>تساعد الأذنان الكبيرتان الأرنب على التخلص من الحرارة.</item>
+        <item>تُسمى مجموعة الأرانب أحيانًا fluffle.</item>
+        <item>يحذر الأرنب الذي يضرب الأرض بقدمه من خطر محتمل.</item>
+    </string-array>
+</resources>

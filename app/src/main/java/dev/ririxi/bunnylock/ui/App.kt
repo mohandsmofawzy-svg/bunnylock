@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -91,6 +92,7 @@ enum class Tab(
     HOME(R.string.shell_tab_home, Icons.Rounded.Home),
     BANDS(R.string.shell_tab_bands, BunnyIcons.Bands),
     CELL(R.string.shell_tab_cell, BunnyIcons.Tower),
+    PROFILES(R.string.shell_tab_profiles, Icons.Rounded.Bookmark),
     TOOLS(R.string.shell_tab_tools, Icons.Rounded.Build),
 }
 
@@ -210,6 +212,7 @@ fun BunnyApp(vm: MainViewModel) {
                             Tab.HOME -> HomeScreen(state, vm, contentPadding) { selectedTab = it }
                             Tab.BANDS -> BandsScreen(state, vm, contentPadding)
                             Tab.CELL -> CellScreen(state, vm, contentPadding)
+                            Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding)
                             Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
                         }
                     }
