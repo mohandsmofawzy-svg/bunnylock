@@ -15,9 +15,7 @@ import dev.ririxi.bunnylock.MainActivity
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.system.RebootModemTileService
 import dev.ririxi.bunnylock.system.RestartRadioTileService
-import dev.ririxi.bunnylock.system.NotificationRestoreReceiver
 import dev.ririxi.bunnylock.system.ToggleLocksTileService
-import dev.ririxi.bunnylock.ui.NotificationActionReceiver
 import org.json.JSONArray
 
 object LockNotifier {
@@ -101,7 +99,7 @@ object LockNotifier {
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openApp)
                 .setDeleteIntent(restore)
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_locks), toggleLocks).build())
+               // .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_locks), toggleLocks).build())
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_game_mode), toggleGameMode).build())
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_restart_radio), restartRadio).build())
                 .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_reboot_modem), rebootModem).build())

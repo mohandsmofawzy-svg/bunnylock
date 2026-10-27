@@ -31,11 +31,11 @@
         </activity>
 
         <receiver
-            android:name=".system.NotificationRestoreReceiver"
+            android:name=".data.NotificationRestoreReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".system.NotificationActionReceiver"
+            android:name=".data.NotificationActionReceiver"
             android:exported="false" />
 
         <service

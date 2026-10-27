@@ -1,4 +1,4 @@
-package dev.ririxi.bunnylock.ui // أو حسب الـ Package الأساسية للمشروع عندك
+package dev.ririxi.bunnylock.data
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,15 +8,19 @@ import dev.ririxi.bunnylock.modem.ModemController
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            ACTION_TOGGLE_GAME_MODE -> {
+            LockNotifier.ACTION_TOGGLE_LOCKS -> {
+                // تنفيذ أكشن فتح/قفل الشبكة هنا أو استدعاء الوظيفة المناسبة
+            }
+            LockNotifier.ACTION_TOGGLE_GAME_MODE -> {
                 val currentMode = ModemController.isGameModeEnabled(context)
                 ModemController.setGameModeEnabled(context, !currentMode)
             }
-            // أية أアクションز تانية خلفية تحب تضيفها مستقبلاً
+            LockNotifier.ACTION_RESTART_RADIO -> {
+                // تنفيذ إعادة تشغيل الراديو هنا
+            }
+            LockNotifier.ACTION_REBOOT_MODEM -> {
+                // تنفيذ إعادة تشغيل المودم هنا
+            }
         }
-    }
-
-    companion object {
-        const val ACTION_TOGGLE_GAME_MODE = "dev.ririxi.bunnylock.ACTION_TOGGLE_GAME_MODE"
     }
 }
