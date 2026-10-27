@@ -6,6 +6,6 @@ import android.content.Intent
 
 class NotificationRestoreReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        // معالجة استعادة الإعدادات
+        LockNotifier.restore(context)
     }
 }

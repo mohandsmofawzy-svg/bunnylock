@@ -5,6 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import dev.ririxi.bunnylock.modem.ModemController
+import dev.ririxi.bunnylock.shizuku.RootOrShizuku
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -20,13 +28,46 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
             LockNotifier.ACTION_RESTART_RADIO -> {
                 Toast.makeText(context, "Restarting Radio...", Toast.LENGTH_SHORT).show()
-                // لو الـ ModemController شغال من خلال خدمة أو كائن متاح، تقدر تستدعي دالتك هنا
-                // أو تنفذ الأكشن بالطريقة المناسبة لمشروعك
+                runModemAction(context, LockNotifier.ACTION_RESTART_RADIO)
             }
             LockNotifier.ACTION_REBOOT_MODEM -> {
                 Toast.makeText(context, "Rebooting Modem...", Toast.LENGTH_SHORT).show()
-                // استدعاء إعادة تشغيل المودم هنا
+                runModemAction(context, LockNotifier.ACTION_REBOOT_MODEM)
             }
         }
+    }
+
+    private fun runModemAction(context: Context, action: String) {
+        val pendingResult = goAsync()
+        val appContext = context.applicationContext
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        scope.launch {
+            var modem: ModemController? = null
+            try {
+                val connected = CompletableDeferred<Unit>()
+                modem = ModemController(
+                    appContext,
+                    scope,
+                    RootOrShizuku(appContext) {},
+                    onConnected = { connected.complete(Unit) },
+                )
+                modem.connect()
+                withTimeout(CONNECT_TIMEOUT_MILLIS) { connected.await() }
+                when (action) {
+                    LockNotifier.ACTION_RESTART_RADIO -> modem.radioCycle()
+                    LockNotifier.ACTION_REBOOT_MODEM -> modem.rebootModem()
+                }
+            } catch (_: Exception) {
+                // Notification actions have no foreground UI for reporting an error.
+            } finally {
+                modem?.close()
+                scope.cancel()
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MILLIS = 90_000L
     }
 }
