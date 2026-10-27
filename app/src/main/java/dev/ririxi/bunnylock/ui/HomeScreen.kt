@@ -82,7 +82,7 @@ fun HomeScreen(
     goTo: (Tab) -> Unit,
 ) {
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { Hero(state, onUnlock = vm::unlockEverything, onBands = { goTo(Tab.BANDS) }, onCell = { goTo(Tab.CELL) }) }
+        item { Hero(state, onUnlock = vm::unlockEverything, onBands = { goTo(Tab.BANDS) }, onCell = { goTo(Tab.CELL) },onGameMode = { enabled -> vm.setGameModeEnabled(enabled) } ) }
 
         val carriers = state.modem.carriers
         item {
@@ -126,6 +126,7 @@ private fun Hero(
     onUnlock: () -> Unit,
     onBands: () -> Unit,
     onCell: () -> Unit,
+    onGameMode: (Boolean) -> Unit,
 ) {
     val locked = state.modem.anyBandLock || state.modem.anyCellLock || state.modem.anyPlmnLock
     val strayNote =
@@ -182,7 +183,7 @@ private fun Hero(
                 }
             }
 
-            GameModeButton(state.gameModeEnabled, onClick = { vm.setGameModeEnabled(!state.gameModeEnabled) })
+            GameModeButton(state.gameModeEnabled, onClick = { onGameMode(!state.gameModeEnabled) })
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val buttonHeight = ButtonDefaults.MediumContainerHeight

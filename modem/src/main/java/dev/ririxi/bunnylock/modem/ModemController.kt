@@ -120,7 +120,7 @@ private const val HAL_LOCK_RECHECKS = 2
 
 private const val PIXEL_AT_NODE = "/dev/umts_router"
 
-private val LIVE_CELL_SCAN_WAIT = 1500.milliseconds
+private val LIVE_CELL_SCAN_WAIT = 6000.milliseconds
 private val GAME_MODE_CELL_SCAN_WAIT = 5.seconds
 private val AUTOMATED_RECOVERY_COOLDOWN = 45.seconds
 private const val POOR_SIGNAL_RSRP_DBM = -120
