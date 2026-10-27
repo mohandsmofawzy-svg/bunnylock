@@ -36,4 +36,7 @@
     <string name="home_tag_primary">Główna</string>
     <string name="home_tag_secondary">Dodatkowa</string>
     <string name="home_tag_serving">Obsługująca</string>
+    <string name="home_game_mode">Tryb gry</string>
+    <string name="home_game_mode_on">WŁ.</string>
+    <string name="home_game_mode_off">WYŁ.</string>
 </resources>

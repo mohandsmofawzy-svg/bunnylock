@@ -32,4 +32,7 @@
     <string name="home_tag_primary">Primary</string>
     <string name="home_tag_secondary">Secondary</string>
     <string name="home_tag_serving">Serving</string>
+    <string name="home_game_mode">Game Mode</string>
+    <string name="home_game_mode_on">ON</string>
+    <string name="home_game_mode_off">OFF</string>
 </resources>

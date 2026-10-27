@@ -54,6 +54,7 @@ class MainViewModel(
                 checkUpdates = prefs.getBoolean("checkUpdates", true),
                 favoriteBands = loadFavoriteBands(),
                 profiles = ProfileStore.load(app),
+                gameModeEnabled = prefs.getBoolean("gameModeEnabled", false),
             ),
         )
 
@@ -213,6 +214,11 @@ class MainViewModel(
     fun setBackend(backend: Backend) = modem.setBackend(backend)
 
     fun setPersist(enabled: Boolean) = modem.setPersist(enabled)
+
+    fun setGameModeEnabled(enabled: Boolean) {
+        modem.setGameModeEnabled(enabled)
+        updateState { copy(gameModeEnabled = enabled) }
+    }
 
     fun setAtNode(node: String) = modem.setAtNode(node)
 

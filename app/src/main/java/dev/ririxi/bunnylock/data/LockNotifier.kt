@@ -69,10 +69,10 @@ object LockNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val toggleLocks =
-            PendingIntent.getActivity(
+            PendingIntent.getBroadcast(
                 context,
                 1,
-                Intent(context, MainActivity::class.java).setAction(ACTION_TOGGLE_LOCKS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                Intent(context, NotificationActionReceiver::class.java).setAction(ACTION_TOGGLE_LOCKS),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val restartRadio = actionIntent(context, ACTION_RESTART_RADIO, 2)
@@ -131,10 +131,10 @@ object LockNotifier {
     }
 
     private fun actionIntent(context: Context, action: String, requestCode: Int) =
-        PendingIntent.getActivity(
+        PendingIntent.getBroadcast(
             context,
             requestCode,
-            Intent(context, MainActivity::class.java).setAction(action).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            Intent(context, NotificationActionReceiver::class.java).setAction(action),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 }

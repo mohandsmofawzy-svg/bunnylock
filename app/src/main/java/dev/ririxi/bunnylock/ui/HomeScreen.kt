@@ -7,6 +7,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -43,11 +45,18 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.ririxi.bunnylock.R
@@ -173,6 +182,8 @@ private fun Hero(
                 }
             }
 
+            GameModeButton(state.gameModeEnabled, onClick = { vm.setGameModeEnabled(!state.gameModeEnabled) })
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val buttonHeight = ButtonDefaults.MediumContainerHeight
                 if (locked) {
@@ -207,6 +218,57 @@ private fun Hero(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GameModeButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(enabled) {
+        if (!enabled) {
+            pulse.snapTo(1f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            pulse.animateTo(1.025f, tween(800))
+            pulse.animateTo(1f, tween(800))
+        }
+    }
+    val background = painterResource(if (enabled) R.drawable.bg_game_mode_active else R.drawable.bg_game_mode_inactive)
+    val stateLabel = stringResource(if (enabled) R.string.home_game_mode_on else R.string.home_game_mode_off)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .graphicsLayer {
+                    scaleX = pulse.value
+                    scaleY = pulse.value
+                }
+                .clip(RoundedCornerShape(16.dp))
+                .paint(background, contentScale = ContentScale.FillBounds)
+                .toggleable(
+                    value = enabled,
+                    role = Role.Switch,
+                    onValueChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onClick()
+                    },
+                )
+                .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(stringResource(R.string.home_game_mode), style = MaterialTheme.typography.titleMediumEmphasized)
+        Text(
+            stateLabel,
+            style = MaterialTheme.typography.labelLargeEmphasized,
+            color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

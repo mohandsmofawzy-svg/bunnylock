@@ -34,6 +34,10 @@
             android:name=".system.NotificationRestoreReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".system.NotificationActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".system.ToggleLocksTileService"
             android:exported="true"

@@ -121,6 +121,11 @@ private const val HAL_LOCK_RECHECKS = 2
 private const val PIXEL_AT_NODE = "/dev/umts_router"
 
 private val LIVE_CELL_SCAN_WAIT = 1500.milliseconds
+private val GAME_MODE_CELL_SCAN_WAIT = 5.seconds
+private val AUTOMATED_RECOVERY_COOLDOWN = 45.seconds
+private const val POOR_SIGNAL_RSRP_DBM = -120
+private const val POOR_SIGNAL_SINR_DB = -5
+private const val POOR_SIGNAL_SAMPLES_FOR_RECOVERY = 3
 
 /** An AT node that starts like this sends commands through MediaTek's RIL passthrough instead of a modem tty. */
 private const val RIL_NODE_PREFIX = "ril:"
@@ -165,6 +170,12 @@ class ModemController(
     private var helper: PrivilegedClient = RootClient(this.context)
     private val prefs = this.context.getSharedPreferences("bunnylock", Context.MODE_PRIVATE)
 
+    val isGameModeEnabled: Boolean
+        get() = prefs.getBoolean("gameModeEnabled", false)
+
+    private var poorSignalSamples = 0
+    private var automatedRecovery: Job? = null
+
     /** SIMs whose 5G mode went through Samsung's service because QMI refused it, so it is read back from there too. */
     private val samsungNrModeReadbackSims = mutableSetOf<Int>()
 
@@ -184,6 +195,10 @@ class ModemController(
 
     private val current get() = _state.value
 
+    /** Best currently observed LTE/NR signal, with RSRP as the primary metric and SINR as the tie-breaker. */
+    val bestObservedSignal: Signal?
+        get() = current.signals.maxWithOrNull(compareBy<Signal> { it.rsrp ?: Int.MIN_VALUE }.thenBy { it.sinr ?: Int.MIN_VALUE })
+
     // From the last full refresh, reused by the live ones.
     private var backendCells: List<Cell> = emptyList()
     private var backendCarriers: List<Carrier> = emptyList()
@@ -197,6 +212,11 @@ class ModemController(
     private var connecting: Job? = null
 
     fun close() = helper.stop()
+
+    fun setGameModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("gameModeEnabled", enabled).apply()
+        if (!enabled) poorSignalSamples = 0
+    }
 
     fun connect() {
         if (connecting?.isActive == true) return
@@ -857,11 +877,38 @@ class ModemController(
                 backendCarriers = Carriers.fromReport(serving.optJSONArray("carriers"))
             }
         }
-        val cells = Cells.merge(backendCells, Cells.scan(context, subscriptionId, LIVE_CELL_SCAN_WAIT))
+        val scanWait = if (isGameModeEnabled) GAME_MODE_CELL_SCAN_WAIT else LIVE_CELL_SCAN_WAIT
+        val cells = Cells.merge(backendCells, Cells.scan(context, subscriptionId, scanWait))
         val signals = Carriers.signals(context, subscriptionId)
         val carriers = connectionCarriers(sim, cells, signals)
         if (current.refreshing || current.sim != sim) return
         updateState { copy(cells = cells, carriers = carriers, signals = signals) }
+        monitorSignalForRecovery(signals)
+    }
+
+    private fun monitorSignalForRecovery(signals: List<Signal>) {
+        if (!isGameModeEnabled || current.anyBandLock || current.anyCellLock || current.anyPlmnLock || current.backend != Backend.QUALCOMM) {
+            poorSignalSamples = 0
+            return
+        }
+        val best = signals.maxWithOrNull(compareBy<Signal> { it.rsrp ?: Int.MIN_VALUE }.thenBy { it.sinr ?: Int.MIN_VALUE })
+        val poor = best != null && (best.rsrp ?: 0) <= POOR_SIGNAL_RSRP_DBM && (best.sinr == null || best.sinr <= POOR_SIGNAL_SINR_DB)
+        poorSignalSamples = if (poor) poorSignalSamples + 1 else 0
+        if (poorSignalSamples < POOR_SIGNAL_SAMPLES_FOR_RECOVERY || automatedRecovery?.isActive == true) return
+        poorSignalSamples = 0
+        automatedRecovery = scope.launch { attemptAutomatedSignalRecovery() }
+    }
+
+    private suspend fun attemptAutomatedSignalRecovery() {
+        if (!isGameModeEnabled || current.anyBandLock || current.anyCellLock || current.anyPlmnLock) return
+        val now = System.currentTimeMillis()
+        val previous = prefs.getLong("gameModeLastRecoveryAt", 0L)
+        if (previous != 0L && now - previous < AUTOMATED_RECOVERY_COOLDOWN.inWholeMilliseconds) return
+        prefs.edit().putLong("gameModeLastRecoveryAt", now).apply()
+        runSuspendCatching { reattach() }
+            .onFailure { error ->
+                if (error !is CancellationException) log("Automatic signal recovery failed: ${error.message ?: "unknown error"}.")
+            }
     }
 
     private fun withStrayBands(

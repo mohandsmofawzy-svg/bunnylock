@@ -50,6 +50,7 @@ data class UiState(
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
     val profiles: List<LockProfile> = emptyList(),
+    val gameModeEnabled: Boolean = false,
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

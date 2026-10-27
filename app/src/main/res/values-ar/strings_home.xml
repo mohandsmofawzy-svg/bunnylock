@@ -40,4 +40,7 @@
     <string name="home_tag_primary">أساسي</string>
     <string name="home_tag_secondary">ثانوي</string>
     <string name="home_tag_serving">قيد الخدمة</string>
+    <string name="home_game_mode">وضع اللعب</string>
+    <string name="home_game_mode_on">مفعّل</string>
+    <string name="home_game_mode_off">متوقف</string>
 </resources>
