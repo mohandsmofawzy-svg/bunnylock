@@ -1,6 +1,7 @@
 package dev.ririxi.bunnylock.ui
 
 import dev.ririxi.bunnylock.core.Bands
+import dev.ririxi.bunnylock.data.DynamicPlmnStatus
 import dev.ririxi.bunnylock.data.Release
 import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.Group
@@ -53,6 +54,7 @@ data class UiState(
     val profiles: List<LockProfile> = emptyList(),
     val gameModeEnabled: Boolean = false,
     val deviceSpoofing: DeviceSpoofingState = DeviceSpoofingState(),
+    val dynamicPlmn: DynamicPlmnStatus = DynamicPlmnStatus(),
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

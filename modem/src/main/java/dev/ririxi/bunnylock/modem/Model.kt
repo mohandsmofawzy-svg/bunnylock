@@ -322,6 +322,8 @@ data class ModemState(
     val mtkCellLockRefused: Boolean = false,
     /** e.g. "262 01". Null when selection is automatic. */
     val plmnLock: String? = null,
+    /** True only when the latest modem/framework read explicitly reported network-selection mode. */
+    val plmnLockKnown: Boolean = false,
     val registeredPlmn: String? = null,
     val registeredName: String? = null,
     val homePlmn: String? = null,

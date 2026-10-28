@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.data.Cell
+import dev.ririxi.bunnylock.data.DynamicPlmnService
 import dev.ririxi.bunnylock.data.LockNotifier
 import dev.ririxi.bunnylock.data.ProfileStore
 import dev.ririxi.bunnylock.data.Rat
@@ -57,6 +58,9 @@ class MainViewModel(
             updateState { copy(gameModeEnabled = enabled) }
         }
     }
+    private val dynamicPlmnPreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key?.startsWith("dynamicPlmn") == true) syncDynamicPlmnStatus()
+    }
 
     private val _ui =
         MutableStateFlow(
@@ -65,6 +69,7 @@ class MainViewModel(
                 favoriteBands = loadFavoriteBands(),
                 profiles = ProfileStore.load(app),
                 gameModeEnabled = prefs.getBoolean("gameModeEnabled", false),
+                dynamicPlmn = DynamicPlmnService.status(app),
             ),
         )
 
@@ -91,6 +96,7 @@ class MainViewModel(
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(gameModePreferenceListener)
+        prefs.registerOnSharedPreferenceChangeListener(dynamicPlmnPreferenceListener)
         modem.connect()
         checkForUpdate()
     }
@@ -127,6 +133,7 @@ class MainViewModel(
     /** يفك مستمع التفضيلات وShizuku ويوقف المساعد قبل انتهاء نطاق ViewModel. */
     override fun onCleared() {
         prefs.unregisterOnSharedPreferenceChangeListener(gameModePreferenceListener)
+        prefs.unregisterOnSharedPreferenceChangeListener(dynamicPlmnPreferenceListener)
         stopWatchingShizuku()
         modem.close()
     }
@@ -137,6 +144,7 @@ class MainViewModel(
 
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
+        syncDynamicPlmnStatus()
         deviceSpoofing.refreshShizukuStatus()
         if (modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
         val locales = app.resources.configuration.locales
@@ -150,6 +158,35 @@ class MainViewModel(
     }
 
     fun refresh() = modem.refresh()
+
+    fun setDynamicPlmnEnabled(enabled: Boolean) {
+        if (enabled) {
+            try {
+                DynamicPlmnService.start(app)
+            } catch (e: RuntimeException) {
+                DynamicPlmnService.recordStartFailure(app, e)
+                _events.tryEmit(e.message ?: app.getString(R.string.dynamic_plmn_start_failed))
+            }
+        } else {
+            DynamicPlmnService.stop(app)
+        }
+        syncDynamicPlmnStatus()
+    }
+
+    fun retryDynamicPlmn() {
+        try {
+            DynamicPlmnService.retry(app)
+        } catch (e: RuntimeException) {
+            DynamicPlmnService.recordStartFailure(app, e)
+            _events.tryEmit(e.message ?: app.getString(R.string.dynamic_plmn_start_failed))
+        }
+        syncDynamicPlmnStatus()
+    }
+
+    private fun syncDynamicPlmnStatus() {
+        val status = DynamicPlmnService.status(app)
+        updateState { copy(dynamicPlmn = status) }
+    }
 
     fun setDeviceSpoofing(enabled: Boolean) {
         viewModelScope.launch { deviceSpoofing.setHighRefreshRate(enabled) }

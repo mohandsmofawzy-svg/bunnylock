@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -58,6 +59,65 @@ fun CellScreen(
                     )
                 }
                 item { Panel(shape = it.shape) { PlmnForm(state, vm) } }
+            }
+        }
+
+        item {
+            SectionHeader(stringResource(R.string.dynamic_plmn_title))
+            Segmented {
+                item { shapes ->
+                    SegmentedListItem(
+                        checked = state.dynamicPlmn.enabled,
+                        onCheckedChange = vm::setDynamicPlmnEnabled,
+                        shapes = shapes,
+                        colors = segmentColors(),
+                        leadingContent = { Icon(BunnyIcons.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        supportingContent = {
+                            Text(
+                                if (state.dynamicPlmn.enabled) {
+                                    stringResource(R.string.dynamic_plmn_enabled_hint)
+                                } else {
+                                    stringResource(R.string.dynamic_plmn_hint)
+                                },
+                            )
+                        },
+                        trailingContent = { Switch(checked = state.dynamicPlmn.enabled, onCheckedChange = null) },
+                    ) { Text(stringResource(R.string.dynamic_plmn_title), style = MaterialTheme.typography.titleMediumEmphasized) }
+                }
+                item {
+                    val status = state.dynamicPlmn
+                    val statusText =
+                        when {
+                            status.state == "STOPPING" -> stringResource(R.string.dynamic_plmn_stopping)
+                            !status.enabled -> stringResource(R.string.dynamic_plmn_stopped)
+                            !status.serviceRunning -> stringResource(R.string.dynamic_plmn_service_not_running)
+                            status.state == "ERROR" -> stringResource(R.string.dynamic_plmn_error)
+                            status.state == "CHECKING" -> stringResource(R.string.dynamic_plmn_checking)
+                            status.state == "RETRYING" -> stringResource(R.string.dynamic_plmn_retrying)
+                            else -> stringResource(R.string.dynamic_plmn_running)
+                        }
+                    Panel(shape = it.shape) {
+                        Text(statusText, style = MaterialTheme.typography.titleSmall)
+                        if (status.simName.isNotBlank()) Text(stringResource(R.string.dynamic_plmn_sim, status.simName))
+                        if (status.homePlmn.isNotBlank()) Text(stringResource(R.string.dynamic_plmn_home, status.homePlmn))
+                        if (status.lastCheckAt > 0) {
+                            val formatted = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(status.lastCheckAt))
+                            Text(stringResource(R.string.dynamic_plmn_last_check, formatted))
+                        }
+                        if (status.result.isNotBlank()) Text(stringResource(R.string.dynamic_plmn_result, status.result))
+                        if (status.error.isNotBlank()) {
+                            Text(status.error, color = MaterialTheme.colorScheme.error)
+                        } else if (status.enabled && !status.serviceRunning) {
+                            Text(stringResource(R.string.dynamic_plmn_service_unavailable_hint), color = MaterialTheme.colorScheme.error)
+                        }
+                        Text(stringResource(R.string.dynamic_plmn_interval), style = MaterialTheme.typography.bodySmall)
+                        if (status.enabled && !status.serviceRunning) {
+                            OutlinedButton(onClick = vm::retryDynamicPlmn) {
+                                Text(stringResource(R.string.dynamic_plmn_retry_start))
+                            }
+                        }
+                    }
+                }
             }
         }
 

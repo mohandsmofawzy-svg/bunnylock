@@ -939,6 +939,7 @@ class ModemController(
                     nrLock = modem.nrLock,
                     legacyCellLock = modem.legacyCellLock,
                     plmnLock = plmnLock,
+                    plmnLockKnown = modem.plmnReported || aospState?.has("selectionMode") == true,
                     registeredPlmn = telephony.networkOperator?.takeIf { it.length >= 5 },
                     registeredName = telephony.networkOperatorName?.takeIf { it.isNotBlank() },
                     homePlmn = telephony.simOperator?.takeIf { it.length >= 5 },
@@ -957,6 +958,7 @@ class ModemController(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            updateState { copy(plmnLockKnown = false) }
             report(Text(R.string.modem_couldnt, Text(R.string.modem_goal_refresh), reasonOf(e)))
         } finally {
             updateState { copy(refreshing = false) }

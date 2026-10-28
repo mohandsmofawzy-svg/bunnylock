@@ -4,6 +4,9 @@
     <!-- تستخدم الإشعارات للإبلاغ عن الأقفال، ويحتاج فحص التحديثات إلى الإنترنت. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- التطبيق مخصص للأجهزة الهاتفية التي توفر واجهات Telephony. -->
     <uses-feature android:name="android.hardware.telephony" android:required="true" />
@@ -45,6 +48,25 @@
         <receiver
             android:name=".data.NotificationActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".data.DynamicPlmnBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".data.DynamicPlmnService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled ongoing cellular PLMN monitoring and recovery" />
+        </service>
 
         <!-- مربعات Quick Settings محمية بإذن النظام ولا تقبل تشغيلًا عاديًا من تطبيق آخر. -->
         <service

@@ -38,6 +38,7 @@ Depending on the phone and backend, bunnylock can:
 - lock one or more PCIs on supported modems
 - select 5G SA, NSA, or both
 - lock to a mobile network (PLMN)
+- monitor the active data SIM's Home PLMN with **Dynamic PLMN Lock**, using a foreground service and persistent notification
 - re-attach, restart the radio, or reboot the modem
 - clear active locks with **Unlock all**
 - save local band and cell-lock profiles for quick reuse
@@ -76,6 +77,8 @@ Available features still depend on what the modem and firmware accept. In partic
 
 Locking a band or cell that your carrier does not use can leave the phone without service. **Unlock all** works offline, so keep it in mind while experimenting.
 The low-importance notification appears while locks are active and includes the same quick actions. Android requires notification permission on Android 13 and later.
+
+Dynamic PLMN Lock is enabled from the PLMN section on the Cell screen. It checks on a 60-second target interval, reports the modem's PLMN-lock state when that state is readable, and only requests the Home PLMN lock when the modem confirms no other PLMN lock is active. The ongoing foreground-service notification remains while monitoring is enabled. Android Doze, vendor battery policies, permission changes, or system service restrictions can delay or stop checks; the app reports when its service is not running rather than guaranteeing a schedule. If enabled before a reboot, bunnylock attempts to restore monitoring after boot, subject to Android's background-start rules and available Root/Shizuku access. Stopping Dynamic leaves any existing PLMN lock in place.
 
 If something fails, copy the diagnostics from **Tools**. They include the detected chipset, backend, available interfaces, and recent operation log.
 
