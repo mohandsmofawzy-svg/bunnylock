@@ -2,6 +2,7 @@
 
 package dev.ririxi.bunnylock.ui
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
@@ -33,7 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.DeviceInfo
 import dev.ririxi.bunnylock.modem.andList
-import dev.ririxi.bunnylock.ui.theme.dynamicColorAvailable
 
 private val AT_COMMAND_PRESETS = listOf("ATI", "AT+EPBSE?", "AT+EPBSEH?", "AT+EMMCHLCK?", "AT+GOOGGETNV=\"NR.CONFIG.MODE\"")
 
@@ -68,6 +69,7 @@ fun ToolsScreen(
     var qmiMessage by rememberSaveable { mutableStateOf("004D") }
     var qmiPayload by rememberSaveable { mutableStateOf("") }
     var checkedServicesOpen by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val arrowAngle by animateFloatAsState(if (checkedServicesOpen) 180f else 0f, label = "arrow")
 
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -87,7 +89,7 @@ fun ToolsScreen(
                         SegmentedListItem(
                             selected = selected,
                             onClick = { vm.setBackend(backend) },
-                            enabled = !needsRoot,
+                            enabled = !needsRoot && !state.busy && !state.modem.refreshing,
                             shapes = shapes,
                             colors = segmentColors(),
                             supportingContent = if (hint !== null) ({ Text(hint) }) else null,
@@ -102,6 +104,7 @@ fun ToolsScreen(
                             "Keep band locks after reboot",
                             "When this is off, locks are cleared on reboot.",
                             checked = state.modem.persist,
+                            enabled = !state.busy && !state.modem.refreshing,
                             onCheckedChange = vm::setPersist,
                         )
                     }
@@ -109,21 +112,17 @@ fun ToolsScreen(
             }
         }
 
-        if (dynamicColorAvailable) {
-            item {
-                SectionHeader("Appearance")
-                Segmented {
-                    item {
-                        SwitchItem(
-                            it,
-                            "Dynamic color",
-                            "Use your wallpaper colors. Off uses the default blue theme.",
-                            checked = state.dynamicColor,
-                            onCheckedChange = vm::setDynamicColor,
-                        )
-                    }
-                }
-            }
+        item {
+            SectionHeader("Language")
+            ConnectedChoice(
+                options = listOf("en", "ar"),
+                selected = state.language,
+                label = { if (it == "ar") "العربية" else "English" },
+                onSelect = { language ->
+                    vm.setLanguage(language)
+                    (context as? Activity)?.recreate()
+                },
+            )
         }
 
         item {
@@ -199,6 +198,7 @@ fun ToolsScreen(
                     vm::setAtNode,
                     label = { Text("AT port") },
                     singleLine = true,
+                    enabled = !state.busy && !state.modem.refreshing,
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = { Text(atNodesHint(state.modem.device)) },
                 )
@@ -212,7 +212,7 @@ fun ToolsScreen(
                         IconButton(
                             onClick = { if (atCommand.isNotBlank()) vm.sendAt(atCommand.trim()) },
                             enabled = !state.busy && state.modem.atNode.isNotBlank(),
-                        ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send") }
+                        ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
                     },
                 )
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,7 +258,7 @@ fun ToolsScreen(
                                     if (service !== null && message !== null) vm.sendQmi(service, message, qmiPayload)
                                 },
                                 enabled = !state.busy,
-                            ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send") }
+                            ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
                         },
                     )
                 }
@@ -305,7 +305,7 @@ fun ToolsScreen(
                                 trailingContent = {
                                     Icon(
                                         Icons.Rounded.KeyboardArrowDown,
-                                        contentDescription = if (checkedServicesOpen) "Collapse" else "Expand",
+                                        contentDescription = translateUiText(if (checkedServicesOpen) "Collapse" else "Expand", state.language),
                                         modifier = Modifier.rotate(arrowAngle),
                                     )
                                 },
@@ -333,6 +333,22 @@ fun ToolsScreen(
             item {
                 SectionHeader("Log")
                 MonospacePanel(state.modem.log.joinToString("\n"))
+            }
+        }
+
+        item {
+            SectionHeader("Application")
+            Segmented {
+                item {
+                    ActionItem(
+                        it,
+                        "Exit",
+                        "Stop app tasks and close safely.",
+                        Icons.Rounded.Close,
+                        enabled = true,
+                        onClick = { vm.exit { (context as? Activity)?.finishAndRemoveTask() } },
+                    )
+                }
             }
         }
 
@@ -435,15 +451,17 @@ private fun SwitchItem(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     SegmentedListItem(
         checked = checked,
         onCheckedChange = onCheckedChange,
+        enabled = enabled,
         shapes = shapes,
         colors = segmentColors(),
         supportingContent = { Text(subtitle) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
     ) { Text(title) }
 }
 

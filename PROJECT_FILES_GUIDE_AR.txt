@@ -1,0 +1,177 @@
+دليل ملفات مشروع Bunny Lock
+============================
+
+هذا الدليل يصف الملفات الموجودة فعليًا في المستودع، مع التركيز على مسار الواجهة والتحكم بالمودم والإعدادات والعمليات الخلفية.
+
+ملفات المشروع والبناء
+---------------------
+build.gradle.kts
+إعدادات Gradle العامة ومهام توقيع APK.
+
+settings.gradle.kts
+تسجيل وحدتي التطبيق والمودم في مشروع Gradle.
+
+gradle/libs.versions.toml
+إصدارات إضافات ومكتبات Android وCompose وShizuku وCoroutines.
+
+gradle.properties
+خيارات Gradle العامة للمشروع.
+
+gradle/wrapper/gradle-wrapper.properties
+إصدار Gradle الذي يستخدمه gradlew.
+
+app/build.gradle.kts
+إعداد تطبيق Android، إصدار SDK، التبعيات، ضغط الموارد والتوقيع.
+
+modem/build.gradle.kts
+إعداد مكتبة المودم وربط مصادر Kotlin ومكتبة QRTR الأصلية.
+
+الواجهة والتطبيق
+----------------
+app/src/main/AndroidManifest.xml
+الصلاحيات والتعريف بنشاط التطبيق ومزود Shizuku؛ يجب أن تعكس مكوناته ملفات التنفيذ الفعلية.
+
+app/src/main/java/dev/ririxi/bunnylock/MainActivity.kt
+نقطة بدء Compose، طلب الصلاحيات، استقبال إجراء إزالة الأقفال من الإشعار، وتطبيق لغة التطبيق واتجاه RTL.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/App.kt
+التنقل بين Home وBands وCell lock وTools، التحديث الحي، وشريط الإشعارات داخل التطبيق.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/MainViewModel.kt
+يربط الواجهة بمتحكم المودم، ينفذ عمليات المستخدم، يحفظ التفضيلات، ويمنع بدء أوامر جديدة عند الخروج.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/Model.kt
+نماذج حالة الواجهة واختيارات الخلايا والنطاقات واللغة.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/Translation.kt
+ترجمة نصوص Compose للإنجليزية والعربية، مع إبقاء قيم التردد ومعرّفات الشبكة التقنية دون تغيير.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/BandsScreen.kt
+واجهة اختيار نطاقات LTE وNR وWCDMA وGSM وأوضاع الشبكة و5G.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/CellScreen.kt
+واجهة قفل الخلية والتردد وPCI واختيار PLMN.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/HomeScreen.kt
+ملخص الاتصال الحالي وحالة الأقفال والخلايا والإشارات.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/ToolsScreen.kt
+اختيار واجهة المودم، أدوات AT وQMI، إعداد اللغة، التشخيصات، وإجراء الخروج الآمن.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/Components.kt
+عناصر Compose المشتركة مثل الأزرار الشبكية، مجموعات الخيارات، الشارات واللوحات.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/Bunny.kt
+رسوم وحركات شخصية Bunny ومؤشر التحديث.
+
+app/src/main/java/dev/ririxi/bunnylock/ui/theme/Theme.kt
+ألوان التطبيق: خلفية سوداء، أسطح داكنة، وعناصر تفاعلية نبيتي مع ألوان مستقلة لقياس الإشارة.
+
+app/src/main/res/values/strings.xml
+موارد النص الافتراضية، ومنها اسم التطبيق.
+
+app/src/main/res/values-ar/strings.xml
+موارد اسم التطبيق للغة العربية.
+
+app/src/main/java/dev/ririxi/bunnylock/data/LockNotifier.kt
+إشعار حالة الأقفال وإجراء Unlock all الذي يعالجه MainActivity وMainViewModel.
+
+app/src/main/java/dev/ririxi/bunnylock/data/Updates.kt
+فحص إصدار GitHub بمهلات اتصال وقراءة محددة.
+
+الوصول والصلاحيات
+-----------------
+app/src/main/java/dev/ririxi/bunnylock/shizuku/RootOrShizuku.kt
+اختيار الوصول المتاح، Root أو Shizuku، وبدء عميل المساعد.
+
+app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuClient.kt
+التواصل مع Shizuku وتشغيل المساعد عبر الخدمة أو shell.
+
+app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuService.kt
+واجهة خدمة Shizuku التي تشغّل أوامر المساعد.
+
+مكتبة المودم وقفل الترددات
+--------------------------
+modem/src/main/java/dev/ririxi/bunnylock/modem/ModemController.kt
+منسق الاتصال والتحديث والأقفال. يختار المسار بحسب الواجهة، ويتسلسل الأوامر والتحديث الكامل، ويتخطى تحديث الخلايا الحي عند انشغال المودم.
+
+modem/src/main/java/dev/ririxi/bunnylock/modem/Model.kt
+نماذج الحالة والواجهات المدعومة وبيانات الجهاز والنطاقات.
+
+modem/src/main/java/dev/ririxi/bunnylock/modem/HelperStarter.kt
+العقد الذي يحدد طريقة بدء عميل المساعد وبيانات الوصول.
+
+modem/src/main/java/dev/ririxi/bunnylock/data/PrivilegedClient.kt
+واجهة start/call/stop المشتركة لعملاء Root وShizuku.
+
+modem/src/main/java/dev/ririxi/bunnylock/data/HelperClient.kt
+بروتوكول JSON بين التطبيق وRootServer، توزيع الردود حسب رقم الطلب، مهلات الطلبات، وإغلاق القنوات والطلبات المعلقة.
+
+modem/src/main/java/dev/ririxi/bunnylock/data/RootClient.kt
+بدء RootServer عبر su والتحقق من صلاحية root.
+
+modem/src/main/java/dev/ririxi/bunnylock/data/Cells.kt
+قراءة الخلايا المرئية ودمج تقارير مصادر الراديو.
+
+modem/src/main/java/dev/ririxi/bunnylock/data/Carriers.kt
+تجميع الحوامل وقياسات إشارة الشبكة.
+
+modem/src/main/java/dev/ririxi/bunnylock/core/Bands.kt
+جداول وتحويلات نطاقات وقنوات GSM وWCDMA وLTE وNR؛ مصدر الحسابات التي تعرضها الواجهة.
+
+modem/src/main/java/dev/ririxi/bunnylock/core/Json.kt
+مساعدات التعامل مع JSON المستخدم في بروتوكول الأوامر.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/RootServer.kt
+نقطة تنفيذ المساعد ذي الصلاحيات، توجيه الأوامر إلى واجهة الشركة المصنّعة، وإرجاع JSON.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Aosp.kt
+عمليات Android Radio HAL، اختيار وضع الشبكة، أقفال القنوات وPLMN وإعادة تشغيل الراديو.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Qualcomm.kt
+عمليات Qualcomm الخاصة بالنطاقات وRAT والخلايا وPLMN عبر QMI.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Qmi.kt
+عميل QMI الأصلي وفتح/إغلاق اتصال QRTR.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Mediatek.kt
+أوامر MediaTek AT لقراءة النطاقات وقفل الخلايا وتطبيق إعدادات RAT.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/At.kt
+إرسال أوامر AT إلى منفذ المودم مع مهلة محددة وإغلاق واصف الملف.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Pixel.kt
+إعدادات قفل النطاقات ووضع 5G الخاصة بأجهزة Pixel Tensor.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Samsung.kt
+عمليات وضع 5G الخاصة بخدمات Samsung.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/Sys.kt
+قراءة خصائص النظام وتشغيل أوامر shell محددة المهلة.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/PhysicalChannels.kt
+قراءة قنوات الراديو الفعلية ومعلوماتها من Android.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/OemHook.kt
+اكتشاف والتواصل مع واجهات OEM hook.
+
+modem/src/main/java/dev/ririxi/bunnylock/root/OemCallback.kt
+استقبال نتائج OEM hook وإرجاعها لطبقة الأمر.
+
+modem/src/main/cpp/CMakeLists.txt
+إعداد بناء مكتبة QRTR الأصلية.
+
+modem/src/main/cpp/qrtr.c
+تنفيذ الربط الأصلي منخفض المستوى لبروتوكول QRTR الذي يستخدمه QMI.
+
+ملفات المراجع
+--------------
+README.md
+شرح استخدام التطبيق والوصول المدعوم وملاحظات السلامة والبناء.
+
+TESTED_DEVICES.md
+الأجهزة وواجهات المودم التي جرى اختبارها فعليًا.
+
+ملاحظة حول المهام الخلفية
+-------------------------
+كان AndroidManifest.xml وMainViewModel.kt يشيران إلى Watchdog وخدمة Watchdog غير موجودين في ملفات المشروع. أزيلت الإشارات غير القابلة للبناء بدل اختراع خدمة مراقبة غير موثقة. التحديث الحي الموجود فعليًا يعمل أثناء عرض Home أو Cell lock فقط.

@@ -27,6 +27,7 @@ abstract class HelperClient(
 ) : PrivilegedClient {
     private var process: Process? = null
     private var writer: BufferedWriter? = null
+    // يربط كل رقم طلب برده حتى لا تختلط نتائج الأوامر المتزامنة.
     private val pendingReplies = ConcurrentHashMap<Int, CompletableDeferred<JSONObject>>()
     private val lastRequestId = AtomicInteger(0)
 
@@ -144,15 +145,26 @@ abstract class HelperClient(
     }
 
     override fun stop() {
-        // A helper that is already gone can't take the exit command. Destroying the process covers that case.
-        runCatching {
-            writer?.apply {
-                write("{\"cmd\":\"exit\"}\n")
-                flush()
-            }
-        }
-        process?.destroy()
+        // أرسل exit ثم أغلق الأنابيب وأكمل الطلبات المنتظرة كي لا تبقى مهام الواجهة معلقة.
+        val activeProcess = process
+        val activeWriter = writer
         process = null
         writer = null
+
+        runCatching {
+            activeWriter?.let { output ->
+                synchronized(output) {
+                    output.write("{\"cmd\":\"exit\"}\n")
+                    output.flush()
+                    output.close()
+                }
+            }
+        }
+        activeProcess?.destroy()
+        runCatching { activeProcess?.inputStream?.close() }
+        runCatching { activeProcess?.errorStream?.close() }
+        val stopped = RootException("The $name stopped.")
+        pendingReplies.values.forEach { it.completeExceptionally(stopped) }
+        pendingReplies.clear()
     }
 }

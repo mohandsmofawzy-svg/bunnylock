@@ -23,6 +23,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -179,23 +181,41 @@ class ModemController(
     private inline fun updateState(transform: ModemState.() -> ModemState) = _state.update(transform)
 
     private var connecting: Job? = null
+    // يمنع تداخل تغيير الإعدادات مع تحديث الحالة؛ بعض أوامر المودم تغيّر الراديو على مراحل.
+    private val operationMutex = Mutex()
+    @Volatile private var closed = false
 
-    fun close() = helper.stop()
+    fun close() {
+        closed = true
+        connecting?.cancel()
+        helper.stop()
+    }
+
+    /** ينتظر انتهاء العملية الحالية، ثم يمنع أي أمر جديد ويغلق المساعد بأمان. */
+    suspend fun shutdown() {
+        closed = true
+        connecting?.cancel()
+        connecting?.join()
+        operationMutex.withLock { helper.stop() }
+    }
 
     fun connect() {
+        if (closed) return
         if (connecting?.isActive == true) return
         connecting = scope.launch { connectNow() }
     }
 
     /** For a helper that showed up or went away on its own: waits out a running attempt, which may already have settled it. */
     fun reconnect() {
+        if (closed) return
         scope.launch {
             connecting?.join()
-            if (current.root != RootState.Granted || !helper.running) connect()
+            if (!closed && (current.root != RootState.Granted || !helper.running)) connect()
         }
     }
 
     fun helperLost(reason: String) {
+        if (closed) return
         helper.stop()
         updateState { copy(root = RootState.Denied(reason)) }
     }
@@ -309,7 +329,10 @@ class ModemController(
         goal: String,
         successMessage: String,
         block: suspend () -> String?,
-    ): String = attempt(goal) { block() ?: successMessage }.also(::log)
+    ): String = operationMutex.withLock {
+        check(!closed) { "The modem controller is closed." }
+        attempt(goal) { block() ?: successMessage }.also(::log)
+    }
 
     private suspend fun <T> attempt(
         goal: String,
@@ -719,11 +742,12 @@ class ModemController(
 
     fun refresh() =
         scope.launch {
+            if (closed) return@launch
             if (current.root == RootState.Granted && !helper.running) reconnect() else refreshNow()
         }
 
-    suspend fun refreshNow() {
-        if (!helper.running) return
+    suspend fun refreshNow() = operationMutex.withLock {
+        if (closed || !helper.running) return@withLock
         updateState { copy(refreshing = true) }
         try {
             // Subscription ids change when a SIM is swapped or switched off and on.
@@ -815,44 +839,49 @@ class ModemController(
 
     /**
      * Updates serving cells and signal. [skipCellScan] skips the Android cell-info request and the Qualcomm
-     * serving query so a foreground watchdog does not stack on the 500 ms live refresh.
+    * serving query so foreground cell refreshes do not compete with this request.
      */
     suspend fun refreshConnection(skipCellScan: Boolean = false) {
-        if (!helper.running || current.refreshing || current.root != RootState.Granted) return
-        val sim = current.sim
-        val subscriptionId = subId()
-        if (!skipCellScan && current.backend == Backend.QUALCOMM) {
-            runSuspendCatching { helper.call("qc.serving") { put("sim", sim) } }.getOrNull()?.let { serving ->
-                qualcommServingReport = serving
-                backendCells = runCatching { Cells.fromQualcomm(serving) }.getOrDefault(backendCells)
-                backendCarriers = Carriers.fromReport(serving.optJSONArray("carriers"))
+        if (closed || !operationMutex.tryLock()) return
+        try {
+            if (!helper.running || current.refreshing || current.root != RootState.Granted) return
+            val sim = current.sim
+            val subscriptionId = subId()
+            if (!skipCellScan && current.backend == Backend.QUALCOMM) {
+                runSuspendCatching { helper.call("qc.serving") { put("sim", sim) } }.getOrNull()?.let { serving ->
+                    qualcommServingReport = serving
+                    backendCells = runCatching { Cells.fromQualcomm(serving) }.getOrDefault(backendCells)
+                    backendCarriers = Carriers.fromReport(serving.optJSONArray("carriers"))
+                }
             }
-        }
-        val cells =
-            if (skipCellScan) {
-                current.cells
-            } else {
-                Cells.merge(backendCells, Cells.scan(context, subscriptionId, LIVE_CELL_SCAN_WAIT))
+            val cells =
+                if (skipCellScan) {
+                    current.cells
+                } else {
+                    Cells.merge(backendCells, Cells.scan(context, subscriptionId, LIVE_CELL_SCAN_WAIT))
+                }
+            val signals = Carriers.signals(context, subscriptionId)
+            val carriers = connectionCarriers(sim, cells, signals)
+            val telephony =
+                context.getSystemService(TelephonyManager::class.java)?.let {
+                    if (subscriptionId >= 0) it.createForSubscriptionId(subscriptionId) else it
+                }
+            val identity = telephony?.let(::telephonyIdentity)
+            if (current.refreshing || current.sim != sim) return
+            updateState {
+                copy(
+                    cells = cells,
+                    carriers = carriers,
+                    signals = signals,
+                    registeredPlmn = identity?.registeredPlmn ?: registeredPlmn,
+                    registeredName = identity?.registeredName ?: registeredName,
+                    homePlmn = identity?.homePlmn ?: homePlmn,
+                    homeName = identity?.homeName ?: homeName,
+                    roaming = identity?.roaming ?: roaming,
+                )
             }
-        val signals = Carriers.signals(context, subscriptionId)
-        val carriers = connectionCarriers(sim, cells, signals)
-        val telephony =
-            context.getSystemService(TelephonyManager::class.java)?.let {
-                if (subscriptionId >= 0) it.createForSubscriptionId(subscriptionId) else it
-            }
-        val identity = telephony?.let(::telephonyIdentity)
-        if (current.refreshing || current.sim != sim) return
-        updateState {
-            copy(
-                cells = cells,
-                carriers = carriers,
-                signals = signals,
-                registeredPlmn = identity?.registeredPlmn ?: registeredPlmn,
-                registeredName = identity?.registeredName ?: registeredName,
-                homePlmn = identity?.homePlmn ?: homePlmn,
-                homeName = identity?.homeName ?: homeName,
-                roaming = identity?.roaming ?: roaming,
-            )
+        } finally {
+            operationMutex.unlock()
         }
     }
 

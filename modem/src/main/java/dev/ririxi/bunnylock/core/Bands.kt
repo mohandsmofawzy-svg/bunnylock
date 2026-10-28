@@ -5,6 +5,7 @@ import kotlin.math.roundToInt
 /**
  * Modem masks map band N to bit (N-1), as little-endian bytes (Qualcomm QMI, Pixel NV)
  * or 32-bit words (MediaTek EPBSE). The words are unsigned, so they are held in Longs.
+ * تُستخدم هذه التحويلات لإرسال النطاقات الصحيحة لكل واجهة؛ تغييرها قد يفعّل نطاقًا مختلفًا على المودم.
  */
 object Bands {
     val LTE: List<Int> =
