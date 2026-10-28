@@ -216,8 +216,9 @@ data class DeviceInfo(
     val samsungMenu: Boolean,
     val aospChannels: Boolean,
     val aospNrDc: Boolean,
-    /** MediaTek's phoneEx AT passthrough, usable without root. */
+    /** A MediaTek AT/OEM passthrough, usable without root. */
     val mtkOemHook: Boolean,
+    val mtkOemHookSlotScoped: Boolean,
     val mtkOemHookStatus: String,
     val mtkOemHookChecked: List<String>,
     /** Samsung's ISemTelephony 5G mode control (works without root). */
@@ -268,6 +269,7 @@ data class DeviceInfo(
                 aospChannels = json.optBoolean("aospChannels"),
                 aospNrDc = json.optBoolean("aospNrDc"),
                 mtkOemHook = json.optBoolean("mtkOemHook"),
+                mtkOemHookSlotScoped = json.optBoolean("mtkOemHookSlotScoped"),
                 mtkOemHookStatus = json.optString("mtkOemHookStatus"),
                 mtkOemHookChecked = json.stringList("mtkOemHookChecked"),
                 samsungNrMode = json.optBoolean("samsungNrMode"),

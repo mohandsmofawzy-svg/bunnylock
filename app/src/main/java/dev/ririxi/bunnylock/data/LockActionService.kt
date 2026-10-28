@@ -18,10 +18,12 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlin.time.Duration.Companion.seconds
 
@@ -62,7 +64,6 @@ class LockActionService : Service() {
 
     override fun onDestroy() {
         actionJob?.cancel()
-        controller?.close()
         scope.cancel()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
@@ -78,6 +79,7 @@ class LockActionService : Service() {
                     scope,
                     RootOrShizuku(applicationContext) { modem.helperLost("The Shizuku service stopped.") },
                     onConnected = { ready.complete(Unit) },
+                    forceMtkRilForSelectedSim = action == LockNotifier.ACTION_LOCK_BAND,
                 )
             controller = modem
 
@@ -106,13 +108,17 @@ class LockActionService : Service() {
                 modem.unlockEverything()
                 LockNotifier.cancel(applicationContext)
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             // A failure is deliberately silent: the success toast must only follow a completed modem operation.
         } finally {
-            controller?.let { runCatching { it.shutdown() } }
-            controller = null
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf(latestStartId)
+            withContext(NonCancellable) {
+                controller?.let { runCatching { it.shutdown() } }
+                controller = null
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                stopSelf(latestStartId)
+            }
         }
     }
 

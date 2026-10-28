@@ -148,6 +148,7 @@ class ModemController(
     private val starter: HelperStarter,
     private val onConnected: () -> Unit = {},
     private val onRefreshed: (ModemState) -> Unit = {},
+    private val forceMtkRilForSelectedSim: Boolean = false,
 ) {
     private val context: Context = context.applicationContext
     private var helper: PrivilegedClient = RootClient(this.context)
@@ -242,11 +243,16 @@ class ModemController(
             val savedBackendName = prefs.getString("backend", null)
             val savedBackend = Backend.entries.firstOrNull { it.name == savedBackendName }
             val backend = savedBackend?.takeIf(::allowed) ?: suggestedBackend
+            val useSimScopedMtkRil = forceMtkRilForSelectedSim && backend == Backend.MEDIATEK
+            check(!useSimScopedMtkRil || device.mtkOemHookSlotScoped) {
+                "MediaTek's SIM-specific RIL route isn't available, so the data SIM can't be verified against an AT port."
+            }
             updateState {
                 copy(root = RootState.Granted, access = access, device = device, autoBackend = suggestedBackend, backend = backend)
             }
             val node =
                 when {
+                    useSimScopedMtkRil -> rilNode(current.sim)
                     shellOnly && device.mtkOemHook -> rilNode(sim = current.sim)
                     current.atNode.isNotEmpty() -> current.atNode
                     device.pixelRouter -> PIXEL_AT_NODE
@@ -307,8 +313,7 @@ class ModemController(
         if (dataSubscription.simSlotIndex < 0) return false
         val sims = activeSubscriptions.map { SimInfo(it.simSlotIndex, it.subscriptionId, it.displayName?.toString() ?: "SIM ${it.simSlotIndex + 1}") }
         val sim = dataSubscription.simSlotIndex + 1
-        val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
-        updateState { copy(sims = sims, sim = sim, atNode = atNode) }
+        updateState { copy(sims = sims, sim = sim) }
         return true
     }
 
