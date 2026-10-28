@@ -32,7 +32,7 @@ app/src/main/AndroidManifest.xml
 الصلاحيات والتعريف بنشاط التطبيق ومزود Shizuku؛ يجب أن تعكس مكوناته ملفات التنفيذ الفعلية.
 
 app/src/main/java/dev/ririxi/bunnylock/MainActivity.kt
-نقطة بدء Compose، طلب الصلاحيات، استقبال إجراء إزالة الأقفال من الإشعار، وتطبيق لغة التطبيق واتجاه RTL.
+نقطة بدء Compose، طلب الصلاحيات، وتطبيق لغة التطبيق واتجاه RTL.
 
 app/src/main/java/dev/ririxi/bunnylock/ui/App.kt
 التنقل بين Home وBands وCell lock وTools، التحديث الحي، وشريط الإشعارات داخل التطبيق.
@@ -68,13 +68,16 @@ app/src/main/java/dev/ririxi/bunnylock/ui/theme/Theme.kt
 ألوان التطبيق: خلفية سوداء، أسطح داكنة، وعناصر تفاعلية نبيتي مع ألوان مستقلة لقياس الإشارة.
 
 app/src/main/res/values/strings.xml
-موارد النص الافتراضية، ومنها اسم التطبيق.
+موارد النص الافتراضية، ومنها اسم التطبيق وتسميات وإشعارات إجراءات الأقفال.
 
 app/src/main/res/values-ar/strings.xml
-موارد اسم التطبيق للغة العربية.
+موارد اسم التطبيق وتسميات أزرار الإشعار ونصوص حالة الخدمة باللغة العربية.
 
 app/src/main/java/dev/ririxi/bunnylock/data/LockNotifier.kt
-إشعار حالة الأقفال وإجراء Unlock all الذي يعالجه MainActivity وMainViewModel.
+إشعار حالة الأقفال وأزرار Lock Band وUnlock all؛ كلا الإجراءين يبدآن LockActionService دون فتح MainActivity.
+
+app/src/main/java/dev/ririxi/bunnylock/data/LockActionService.kt
+خدمة foreground لإجراءات الإشعار. تعيد تطبيق أقفال النطاقات المحفوظة عبر ModemController، أو تستدعي Unlock All الأصلي، وتعرض Toast Locked بعد نجاح قفل النطاق فقط.
 
 app/src/main/java/dev/ririxi/bunnylock/data/Updates.kt
 فحص إصدار GitHub بمهلات اتصال وقراءة محددة.
@@ -96,7 +99,7 @@ app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuService.kt
 مكتبة المودم وقفل الترددات
 --------------------------
 modem/src/main/java/dev/ririxi/bunnylock/modem/ModemController.kt
-منسق الاتصال والتحديث والأقفال والراديو. يسلسل التغيير وقراءة الحالة وAT وQMI، ويرفض الأوامر بعد بدء الإغلاق. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
+منسق الاتصال والتحديث والأقفال والراديو. يسلسل العمليات بقفل مشترك بين نسخ المتحكم، ويحدد شريحة البيانات الافتراضية من الاشتراك النشط دون افتراض SIM 1. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
 
 modem/src/main/java/dev/ririxi/bunnylock/modem/Model.kt
 نماذج الحالة والواجهات المدعومة وبيانات الجهاز والنطاقات.
@@ -178,4 +181,4 @@ TESTED_DEVICES.md
 
 ملاحظة حول المهام الخلفية
 -------------------------
-تحديث الخلايا الحي يعمل أثناء عرض Home أو Cell lock كل ثانية، ويتخطى القراءة عند انشغال متحكم المودم. ترتيب الأوامر هو: الشاشة ← MainViewModel ← ModemController ← HelperClient ← RootServer ← Aosp أو Qualcomm أو Mediatek أو Pixel بحسب الواجهة المكتشفة. على MediaTek عبر ril:1 يمر الأمر عبر Mediatek ثم At وOemHook؛ وبعد التغيير تحدث الواجهة الحالة مرة واحدة. Watchdog للمراقبة فقط، ولا يبدل وضع الراديو.
+تحديث الخلايا الحي يعمل أثناء عرض Home أو Cell lock كل ثانية، ويتخطى القراءة عند انشغال متحكم المودم. ترتيب أوامر الواجهة هو: الشاشة ← MainViewModel ← ModemController ← HelperClient ← RootServer ← Aosp أو Qualcomm أو Mediatek أو Pixel بحسب الواجهة المكتشفة. إجراءات الإشعار تعمل عبر LockActionService وتستخدم القفل المشترك نفسه؛ Lock Band يحدد فتحة SIM المطابقة لاشتراك البيانات النشط، ولا ينفذ عند تعذر تحديدها أو عندما يتطلب مسار Pixel إعادة تشغيل الراديو. Unlock all يبقي الشريحة التي اختارها المستخدم. Watchdog للمراقبة فقط، ولا يبدل وضع الراديو.

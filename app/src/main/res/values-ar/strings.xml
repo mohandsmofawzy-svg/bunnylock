@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">bunnylock</string>
+    <string name="notification_lock_band">قفل النطاق</string>
+    <string name="notification_unlock_all">إلغاء كل الأقفال</string>
+    <string name="notification_action_locking">جارٍ تطبيق قفل النطاق المحفوظ…</string>
+    <string name="notification_action_unlocking">جارٍ إلغاء كل الأقفال…</string>
 </resources>

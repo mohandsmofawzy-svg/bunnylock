@@ -3,7 +3,6 @@ package dev.ririxi.bunnylock
 import android.Manifest
 import android.content.Context
 import android.content.res.Configuration
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,7 +15,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import dev.ririxi.bunnylock.data.LockNotifier
 import dev.ririxi.bunnylock.ui.BunnyApp
 import dev.ririxi.bunnylock.ui.LocalAppLanguage
 import dev.ririxi.bunnylock.ui.MainViewModel
@@ -56,7 +54,6 @@ class MainActivity : ComponentActivity() {
                 )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) wanted += Manifest.permission.POST_NOTIFICATIONS
             permissionLauncher.launch(wanted.toTypedArray())
-            handleNotificationAction(intent)
         }
         setContent {
             val state by vm.state.collectAsStateWithLifecycle()
@@ -76,12 +73,4 @@ class MainActivity : ComponentActivity() {
         vm.resumed()
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleNotificationAction(intent)
-    }
-
-    private fun handleNotificationAction(intent: Intent?) {
-        if (intent?.action == LockNotifier.ACTION_UNLOCK_ALL) vm.unlockFromNotification()
-    }
 }

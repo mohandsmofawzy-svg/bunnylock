@@ -85,6 +85,7 @@ private val GERAN_RESTORE_BANDS = GERAN_BANDS.values.flatten()
 private val HAL_WCDMA_BANDS = Bands.WCDMA.filter { it !in 15..18 }
 private val UTRAN_RESTORE_BANDS = listOf(1, 2, 3, 4, 5, 8, 9, 19)
 private const val MAX_LOG_LINES = 80
+private val MODEM_OPERATION_MUTEX = Mutex()
 
 /** QMI's network selection preference. 0 is automatic. */
 private const val QMI_NET_SEL_MANUAL = 1
@@ -159,6 +160,7 @@ class ModemController(
         MutableStateFlow(
             ModemState(
                 persist = prefs.getBoolean("persist", true),
+                sim = prefs.getInt("sim", 1),
                 atNode = prefs.getString("atNode", "") ?: "",
             ),
         )
@@ -183,7 +185,7 @@ class ModemController(
 
     private var connecting: Job? = null
     // يمنع تداخل تغيير الإعدادات مع تحديث الحالة؛ بعض أوامر المودم تغيّر الراديو على مراحل.
-    private val operationMutex = Mutex()
+    private val operationMutex = MODEM_OPERATION_MUTEX
     @Volatile private var closed = false
 
     fun close() {
@@ -245,7 +247,7 @@ class ModemController(
             }
             val node =
                 when {
-                    shellOnly && device.mtkOemHook -> rilNode(sim = 1)
+                    shellOnly && device.mtkOemHook -> rilNode(sim = current.sim)
                     current.atNode.isNotEmpty() -> current.atNode
                     device.pixelRouter -> PIXEL_AT_NODE
                     else -> device.atNodes.firstOrNull { it.startsWith("/dev/radio") } ?: device.atNodes.firstOrNull() ?: ""
@@ -293,11 +295,29 @@ class ModemController(
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun selectDefaultDataSim(): Boolean {
+        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return false
+        val defaultDataSubId = SubscriptionManager.getDefaultDataSubscriptionId()
+        if (defaultDataSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) return false
+        val activeSubscriptions =
+            runCatching { context.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList.orEmpty() }
+                .getOrNull() ?: return false
+        val dataSubscription = activeSubscriptions.singleOrNull { it.subscriptionId == defaultDataSubId } ?: return false
+        if (dataSubscription.simSlotIndex < 0) return false
+        val sims = activeSubscriptions.map { SimInfo(it.simSlotIndex, it.subscriptionId, it.displayName?.toString() ?: "SIM ${it.simSlotIndex + 1}") }
+        val sim = dataSubscription.simSlotIndex + 1
+        val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
+        updateState { copy(sims = sims, sim = sim, atNode = atNode) }
+        return true
+    }
+
     private fun subId(): Int =
         current.sims.firstOrNull { it.slot == current.sim - 1 }?.subId ?: SubscriptionManager.getDefaultSubscriptionId()
 
     fun setSim(sim: Int) {
         if (closed) return
+        prefs.edit().putInt("sim", sim).apply()
         val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
         updateState { copy(sim = sim, atNode = atNode) }
         refresh()
@@ -1248,7 +1268,25 @@ class ModemController(
     ) = change(
         if (unlock) "unlock the ${group.label} bands" else "lock the ${group.label} bands",
         if (unlock) "${group.label} bands unlocked." else "${group.label} bands locked.",
-    ) {
+    ) { applyGroupLocked(group, unlock, selected) }
+
+    suspend fun reapplyBandLocks(): String =
+        change("reapply the saved band locks", "Locked.") {
+            check(current.backend != Backend.PIXEL) { "Reapplying Pixel band locks requires a radio restart, so no change was made." }
+            val lockedGroups = current.groups.filter { it.locked && it.current !== null }
+            check(lockedGroups.isNotEmpty()) { "There are no saved band locks to reapply." }
+            lockedGroups.forEach { groupState ->
+                val result = applyGroupLocked(groupState.group, unlock = false, selected = groupState.current.orEmpty())
+                check(result?.startsWith("Android accepted the ") != true) { result.orEmpty() }
+            }
+            "Locked."
+        }
+
+    private suspend fun applyGroupLocked(
+        group: Group,
+        unlock: Boolean,
+        selected: Collection<Int> = emptyList(),
+    ): String? {
         val groupState = current.groups.first { it.group == group }
         val bands = if (unlock) groupState.supported else selected.distinct().sorted()
         require(bands.isNotEmpty()) { "Pick at least one band." }

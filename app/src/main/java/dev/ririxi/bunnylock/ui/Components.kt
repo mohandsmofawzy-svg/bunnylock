@@ -69,7 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.RoundedPolygon
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.data.Rat
-import dev.ririxi.bunnylock.ui.theme.LocalLockGreen
+import dev.ririxi.bunnylock.ui.theme.LocalLockAccent
 
 private val WordmarkFont =
     FontFamily(
@@ -86,11 +86,11 @@ fun Wordmark(
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
 ) {
-    val green = LocalLockGreen.current
+    val accent = LocalLockAccent.current
     Text(
         buildAnnotatedString {
             withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append("bunny") }
-            withStyle(SpanStyle(color = green)) { append("lock") }
+            withStyle(SpanStyle(color = accent)) { append("lock") }
         },
         modifier = modifier,
         style = style.copy(fontFamily = WordmarkFont, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
@@ -274,12 +274,12 @@ fun LockBadge(
     spin: Boolean = false,
     ignored: Boolean = false,
 ) {
-    val green = LocalLockGreen.current
+    val accent = LocalLockAccent.current
     val colors = MaterialTheme.colorScheme
     val style =
         when {
             ignored -> LockBadgeStyle(MaterialShapes.SoftBurst, colors.error.copy(alpha = 0.2f), colors.error, BunnyIcons.LockAlert, "Lock ignored")
-            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, green.copy(alpha = 0.22f), green, BunnyIcons.Lock, "Locked")
+            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, accent.copy(alpha = 0.22f), accent, BunnyIcons.Lock, "Locked")
             else -> LockBadgeStyle(MaterialShapes.Cookie6Sided, colors.surfaceContainerHighest, colors.onSurfaceVariant, BunnyIcons.LockOpen, "Unlocked")
         }
     val containerColor by animateColorAsState(style.container, label = "badge")

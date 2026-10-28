@@ -21,13 +21,13 @@ private val DarkColors =
         onSecondary = Color(0xFF283141),
         secondaryContainer = Color(0xFF394148),
         onSecondaryContainer = Color(0xFFE1E7EC),
-        tertiary = Color(0xFF80CBC4),
-        onTertiary = Color(0xFF003731),
-        tertiaryContainer = Color(0xFF005048),
-        onTertiaryContainer = Color(0xFF9CF2E8),
-        error = Color(0xFFFFB4AB),
-        onError = Color(0xFF690005),
-        errorContainer = Color(0xFF93000A),
+        tertiary = Color(0xFFD2697C),
+        onTertiary = Color(0xFF3B0714),
+        tertiaryContainer = Color(0xFF652033),
+        onTertiaryContainer = Color(0xFFFFD9DF),
+        error = Color(0xFFF44336),
+        onError = Color(0xFFFFFFFF),
+        errorContainer = Color(0xFF8C1D18),
         onErrorContainer = Color(0xFFFFDAD6),
         background = Color(0xFF000000),
         onBackground = Color(0xFFE8E1E3),
@@ -47,16 +47,16 @@ private val DarkColors =
         surfaceContainerHighest = Color(0xFF2B2225),
     )
 
-private val LockGreen = Color(0xFF5BE584)
-private val SignalScale = listOf(LockGreen, Color(0xFFC3E35A), Color(0xFFFFB95C), Color(0xFFFF8A7E))
+private val LockAccent = Color(0xFFB3435A)
+private val SignalScale = listOf(LockAccent, Color(0xFFD2697C), Color(0xFFFFB95C), Color(0xFFFF8A7E))
 
-val LocalLockGreen = staticCompositionLocalOf { LockGreen }
+val LocalLockAccent = staticCompositionLocalOf { LockAccent }
 val LocalSignalScale = staticCompositionLocalOf { SignalScale }
 
 @Composable
 fun BunnyTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalLockGreen provides LockGreen,
+        LocalLockAccent provides LockAccent,
         LocalSignalScale provides SignalScale,
     ) {
         MaterialExpressiveTheme(

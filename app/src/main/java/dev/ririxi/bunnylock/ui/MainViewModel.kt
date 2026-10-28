@@ -62,12 +62,11 @@ class MainViewModel(
 
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
 
-    private var pendingUnlock = false
     private var exitRequested = false
     private var updateCheckJob: Job? = null
 
     private val modem =
-        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onConnected = ::unlockIfPending, onRefreshed = ::refreshed)
+        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onRefreshed = ::refreshed)
 
     // Shizuku hands over its binder a moment after the app starts, or whenever it is started later, so a failed attempt is redone then.
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
@@ -163,18 +162,6 @@ class MainViewModel(
                 onStopped()
             }
         }
-    }
-
-    /** "Unlock all" from the notification. Waits for the helper if the app was just started. */
-    fun unlockFromNotification() {
-        if (exitRequested) return
-        if (modem.state.value.root == RootState.Granted && modem.helperRunning) unlockEverything() else pendingUnlock = true
-    }
-
-    private fun unlockIfPending() {
-        if (!pendingUnlock) return
-        pendingUnlock = false
-        unlockEverything()
     }
 
     // A refresh replaces the band groups, so picks that weren't applied start over.
