@@ -6,11 +6,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +36,7 @@ fun ProfilesScreen(
     state: UiState,
     vm: MainViewModel,
     contentPadding: PaddingValues,
+    onExit: () -> Unit,
 ) {
     var showSaveDialog by rememberSaveable { mutableStateOf(false) }
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -60,6 +66,16 @@ fun ProfilesScreen(
                         }
                         OutlinedButton(onClick = { vm.deleteProfile(profile) }) {
                             Text(stringResource(R.string.profiles_delete))
+                        }
+                    }
+                }
+                item {
+                    Panel {
+                        Text(stringResource(R.string.tools_exit_hint), color = MaterialTheme.colorScheme.onSurface)
+                        OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Rounded.Close, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.tools_exit))
                         }
                     }
                 }

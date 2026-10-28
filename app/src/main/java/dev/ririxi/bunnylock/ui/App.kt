@@ -153,9 +153,6 @@ fun BunnyApp(vm: MainViewModel) {
                             }
                         }
                     }
-                    IconButton(onClick = { showExitConfirmation = true }) {
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.tools_exit))
-                    }
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -235,7 +232,7 @@ fun BunnyApp(vm: MainViewModel) {
                             Tab.HOME -> HomeScreen(state, vm, contentPadding) { selectedTab = it }
                             Tab.BANDS -> BandsScreen(state, vm, contentPadding)
                             Tab.CELL -> CellScreen(state, vm, contentPadding)
-                            Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding)
+                            Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding, onExit = { showExitConfirmation = true })
                             Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
                         }
                     }
