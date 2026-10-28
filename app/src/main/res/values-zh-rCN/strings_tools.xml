@@ -15,6 +15,30 @@
     <string name="tools_language_helper_english">部分来自 Root 辅助进程的消息仍可能显示为英文。</string>
 
     <string name="tools_updates">更新</string>
+    <string name="tools_device_spoofing">设备身份模拟</string>
+    <string name="tools_device_spoof_profile">设备身份模拟 — ROG Phone 6 配置</string>
+    <string name="tools_device_spoof_hint">实验性身份检查，不保证游戏会开放更高帧率。</string>
+    <string name="tools_device_spoof_target">参考配置：ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. 未应用任何配置值。</string>
+    <string name="tools_device_spoof_shizuku">Shizuku：%1$s</string>
+    <string name="tools_device_spoof_shizuku_not_checked">尚未检查</string>
+    <string name="tools_device_spoof_checking">正在检查…</string>
+    <string name="tools_device_spoof_shizuku_connected">已连接且已授权</string>
+    <string name="tools_device_spoof_shizuku_missing">未安装 Shizuku</string>
+    <string name="tools_device_spoof_shizuku_stopped">Shizuku 未运行</string>
+    <string name="tools_device_spoof_permission_denied">未授予 Shizuku 权限</string>
+    <string name="tools_device_spoof_disconnected">Shizuku 连接已断开</string>
+    <string name="tools_device_spoof_error">无法检查设备身份</string>
+    <string name="tools_device_spoof_idle">尚未运行检查。开关仅反映模拟是否实际生效。</string>
+    <string name="tools_device_spoof_success">已验证身份变更。</string>
+    <string name="tools_device_spoof_unsupported">Android 运行期间系统身份属性为只读。未尝试写入，因此功能保持关闭，原始值未改变。</string>
+    <string name="tools_device_spoof_unverified">无法读取全部身份属性。未进行更改，游戏识别情况未经验证。</string>
+    <string name="tools_device_spoof_system_values">原始系统属性（只读）</string>
+    <string name="tools_device_spoof_app_values">Bunny Lock 可见的值</string>
+    <string name="tools_device_spoof_hz">%1$.0f Hz</string>
+    <string name="tools_device_spoof_supported_hz">支持的显示模式：%1$s Hz</string>
+    <string name="tools_device_spoof_rates_unknown">无法读取支持的显示模式</string>
+    <string name="tools_device_spoof_refresh">当前屏幕刷新率：%1$s。%2$s。</string>
+    <string name="tools_device_spoof_fps_note">屏幕刷新率不等于游戏 FPS。未测试游戏设备白名单或实际 FPS；任何影响均未经验证。由于没有修改系统值，关闭时无需尝试恢复。</string>
     <string name="tools_check_updates">自动检查更新</string>
     <string name="tools_check_updates_hint">启动时在 GitHub 上检查新版本。</string>
 

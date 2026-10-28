@@ -15,6 +15,30 @@
     <string name="tools_language_helper_english">Niektóre komunikaty procesu pomocniczego mogą nadal pojawiać się po angielsku.</string>
 
     <string name="tools_updates">Aktualizacje</string>
+    <string name="tools_device_spoofing">Zmiana tożsamości urządzenia</string>
+    <string name="tools_device_spoof_profile">Zmiana tożsamości — profil ROG Phone 6</string>
+    <string name="tools_device_spoof_hint">Eksperymentalny test tożsamości. Nie gwarantuje wyższej liczby klatek w grach.</string>
+    <string name="tools_device_spoof_target">Profil referencyjny: ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. Nie zastosowano żadnych wartości.</string>
+    <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
+    <string name="tools_device_spoof_shizuku_not_checked">Nie sprawdzono</string>
+    <string name="tools_device_spoof_checking">Sprawdzanie…</string>
+    <string name="tools_device_spoof_shizuku_connected">Połączono, uprawnienie przyznane</string>
+    <string name="tools_device_spoof_shizuku_missing">Shizuku nie jest zainstalowane</string>
+    <string name="tools_device_spoof_shizuku_stopped">Shizuku nie jest uruchomione</string>
+    <string name="tools_device_spoof_permission_denied">Nie przyznano uprawnienia Shizuku</string>
+    <string name="tools_device_spoof_disconnected">Utracono połączenie z Shizuku</string>
+    <string name="tools_device_spoof_error">Nie udało się odczytać tożsamości urządzenia</string>
+    <string name="tools_device_spoof_idle">Test nie został uruchomiony. Przełącznik pokazuje, czy zmiana tożsamości jest faktycznie aktywna.</string>
+    <string name="tools_device_spoof_success">Potwierdzono zmianę tożsamości.</string>
+    <string name="tools_device_spoof_unsupported">Właściwości tożsamości systemu są tylko do odczytu podczas działania Androida. Nie próbowano ich zmieniać, więc funkcja jest wyłączona, a wartości pozostały bez zmian.</string>
+    <string name="tools_device_spoof_unverified">Nie udało się odczytać wszystkich właściwości tożsamości. Niczego nie zmieniono, a rozpoznanie przez grę nie jest potwierdzone.</string>
+    <string name="tools_device_spoof_system_values">Oryginalne właściwości systemu (tylko do odczytu)</string>
+    <string name="tools_device_spoof_app_values">Wartości widoczne w Bunny Lock</string>
+    <string name="tools_device_spoof_hz">%1$.0f Hz</string>
+    <string name="tools_device_spoof_supported_hz">Obsługiwane tryby ekranu: %1$s Hz</string>
+    <string name="tools_device_spoof_rates_unknown">Obsługiwane tryby ekranu są niedostępne</string>
+    <string name="tools_device_spoof_refresh">Bieżące odświeżanie ekranu: %1$s. %2$s.</string>
+    <string name="tools_device_spoof_fps_note">Odświeżanie ekranu to nie FPS gry. Nie sprawdzono obsługi urządzenia przez grę ani rzeczywistego FPS; wpływ pozostaje niepotwierdzony. Wyłączenie nie przywraca wartości, ponieważ żadnej nie zmieniono.</string>
     <string name="tools_check_updates">Sprawdzaj aktualizacje</string>
     <string name="tools_check_updates_hint">Przy starcie aplikacji szuka nowej wersji na GitHubie.</string>
 

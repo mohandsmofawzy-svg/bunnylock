@@ -30,6 +30,7 @@ import dev.ririxi.bunnylock.modem.reason
 import dev.ririxi.bunnylock.modem.string
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import dev.ririxi.bunnylock.shizuku.ShizukuClient
+import dev.ririxi.bunnylock.shizuku.DeviceSpoofingController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,7 @@ class MainViewModel(
     private val app: Application,
 ) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("bunnylock", Context.MODE_PRIVATE)
+    private val deviceSpoofing = DeviceSpoofingController(app)
     private val gameModePreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "gameModeEnabled") {
             val enabled = prefs.getBoolean("gameModeEnabled", false)
@@ -81,8 +83,9 @@ class MainViewModel(
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
 
     val state =
-        combine(modem.state, _ui) { modemState, uiState -> uiState.copy(modem = modemState) }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value))
+        combine(modem.state, _ui, deviceSpoofing.state) { modemState, uiState, spoofingState ->
+            uiState.copy(modem = modemState, deviceSpoofing = spoofingState)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value, deviceSpoofing = deviceSpoofing.state.value))
 
     val events = merge(_events, modem.events)
 
@@ -134,6 +137,7 @@ class MainViewModel(
 
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
+        deviceSpoofing.refreshShizukuStatus()
         if (modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
         val locales = app.resources.configuration.locales
         if (locales == shownLocales) return
@@ -146,6 +150,14 @@ class MainViewModel(
     }
 
     fun refresh() = modem.refresh()
+
+    fun setDeviceSpoofing(enabled: Boolean) {
+        if (enabled) {
+            viewModelScope.launch { deviceSpoofing.testProfile() }
+        } else {
+            deviceSpoofing.disable()
+        }
+    }
 
     suspend fun refreshConnection() = modem.refreshConnection()
 

@@ -179,6 +179,7 @@ fun BunnyApp(vm: MainViewModel) {
                     )
                     Button(onClick = vm::connect, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.shell_try_again)) }
                     TextButton(onClick = vm::copyDiagnostics, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.common_copy_diagnostics)) }
+                    DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing)
                 }
             }
 
@@ -334,7 +335,11 @@ private fun Centered(
     content: @Composable () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().padding(innerPadding).padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             content()
         }
     }

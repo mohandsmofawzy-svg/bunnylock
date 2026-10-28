@@ -19,6 +19,30 @@
     <string name="tools_language_ar" translatable="false">العربية</string>
 
     <string name="tools_updates">Updates</string>
+    <string name="tools_device_spoofing">Device Spoofing</string>
+    <string name="tools_device_spoof_profile">Device Spoofing — ROG Phone 6 Profile</string>
+    <string name="tools_device_spoof_hint">Experimental identity check. It does not guarantee that games will offer higher frame rates.</string>
+    <string name="tools_device_spoof_target">Reference profile: ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. No profile values are applied.</string>
+    <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
+    <string name="tools_device_spoof_shizuku_not_checked">Not checked</string>
+    <string name="tools_device_spoof_checking">Checking…</string>
+    <string name="tools_device_spoof_shizuku_connected">Connected and permission granted</string>
+    <string name="tools_device_spoof_shizuku_missing">Shizuku is not installed</string>
+    <string name="tools_device_spoof_shizuku_stopped">Shizuku is not running</string>
+    <string name="tools_device_spoof_permission_denied">Shizuku permission was not granted</string>
+    <string name="tools_device_spoof_disconnected">Shizuku connection was lost</string>
+    <string name="tools_device_spoof_error">Could not inspect device identity</string>
+    <string name="tools_device_spoof_idle">No test has been run. The switch reflects whether spoofing is actually active.</string>
+    <string name="tools_device_spoof_success">Identity change verified.</string>
+    <string name="tools_device_spoof_unsupported">System identity properties are read-only at runtime on Android. No write was attempted, so the profile is OFF and the original values are unchanged.</string>
+    <string name="tools_device_spoof_unverified">Could not read all identity properties. No change was made and game recognition is unverified.</string>
+    <string name="tools_device_spoof_system_values">Original system properties (read-only)</string>
+    <string name="tools_device_spoof_app_values">Values visible in Bunny Lock</string>
+    <string name="tools_device_spoof_hz">%1$.0f Hz</string>
+    <string name="tools_device_spoof_supported_hz">Supported display modes: %1$s Hz</string>
+    <string name="tools_device_spoof_rates_unknown">Supported display modes unavailable</string>
+    <string name="tools_device_spoof_refresh">Current display refresh rate: %1$s. %2$s.</string>
+    <string name="tools_device_spoof_fps_note">Display refresh rate is not game FPS. Game device approval and actual FPS were not tested; any effect is unverified. Turning OFF makes no restoration attempt because no system value was changed.</string>
     <string name="tools_check_updates">Check for updates</string>
     <string name="tools_check_updates_hint">Looks for a new release on GitHub when the app starts.</string>
 

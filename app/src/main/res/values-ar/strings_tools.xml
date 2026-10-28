@@ -16,6 +16,30 @@
     <string name="tools_language_zh_cn" translatable="false">简体中文</string>
     <string name="tools_language_ar" translatable="false">العربية</string>
     <string name="tools_updates">التحديثات</string>
+    <string name="tools_device_spoofing">انتحال هوية الجهاز</string>
+    <string name="tools_device_spoof_profile">انتحال هوية الجهاز — ملف ROG Phone 6</string>
+    <string name="tools_device_spoof_hint">فحص تجريبي للهوية. لا يضمن إتاحة معدل إطارات أعلى في الألعاب.</string>
+    <string name="tools_device_spoof_target">الملف المرجعي: ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. لم تُطبّق أي قيم.</string>
+    <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
+    <string name="tools_device_spoof_shizuku_not_checked">لم يتم الفحص</string>
+    <string name="tools_device_spoof_checking">جارٍ الفحص…</string>
+    <string name="tools_device_spoof_shizuku_connected">متصل والإذن ممنوح</string>
+    <string name="tools_device_spoof_shizuku_missing">Shizuku غير مثبت</string>
+    <string name="tools_device_spoof_shizuku_stopped">خدمة Shizuku لا تعمل</string>
+    <string name="tools_device_spoof_permission_denied">لم يُمنح إذن Shizuku</string>
+    <string name="tools_device_spoof_disconnected">فُقد الاتصال بـ Shizuku</string>
+    <string name="tools_device_spoof_error">تعذرت قراءة هوية الجهاز</string>
+    <string name="tools_device_spoof_idle">لم يُجرَ الاختبار بعد. يعكس المفتاح ما إذا كان الانتحال مفعّلًا فعليًا.</string>
+    <string name="tools_device_spoof_success">تم التحقق من تغيير الهوية.</string>
+    <string name="tools_device_spoof_unsupported">خصائص هوية النظام للقراءة فقط أثناء التشغيل في Android. لم تُجرَ محاولة كتابة، لذا بقيت الميزة متوقفة والقيم الأصلية دون تغيير.</string>
+    <string name="tools_device_spoof_unverified">تعذرت قراءة جميع خصائص الهوية. لم يتغير شيء، ولم يتم التحقق من تعرف الألعاب.</string>
+    <string name="tools_device_spoof_system_values">خصائص النظام الأصلية (للقراءة فقط)</string>
+    <string name="tools_device_spoof_app_values">القيم التي يراها Bunny Lock</string>
+    <string name="tools_device_spoof_hz">%1$.0f هرتز</string>
+    <string name="tools_device_spoof_supported_hz">أوضاع الشاشة المدعومة: %1$s هرتز</string>
+    <string name="tools_device_spoof_rates_unknown">أوضاع الشاشة المدعومة غير متاحة</string>
+    <string name="tools_device_spoof_refresh">معدل تحديث الشاشة الحالي: %1$s. %2$s.</string>
+    <string name="tools_device_spoof_fps_note">معدل تحديث الشاشة ليس FPS اللعبة. لم يتم اختبار اعتماد اللعبة للجهاز أو FPS الفعلي؛ لذا يظل أي تأثير غير مؤكد. لن يحاول إيقاف الميزة الاستعادة لأن أي قيمة نظام لم تتغير.</string>
     <string name="tools_check_updates">التحقق من التحديثات</string>
     <string name="tools_check_updates_hint">البحث عن إصدار جديد على GitHub عند بدء التطبيق.</string>
     <string name="tools_radio">الراديو</string>

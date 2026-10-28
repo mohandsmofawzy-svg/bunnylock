@@ -6,6 +6,7 @@ import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.Group
 import dev.ririxi.bunnylock.modem.LockRat
 import dev.ririxi.bunnylock.modem.ModemState
+import dev.ririxi.bunnylock.shizuku.DeviceSpoofingState
 
 val Group.favoritesKey: String
     get() =
@@ -51,6 +52,7 @@ data class UiState(
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
     val profiles: List<LockProfile> = emptyList(),
     val gameModeEnabled: Boolean = false,
+    val deviceSpoofing: DeviceSpoofingState = DeviceSpoofingState(),
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

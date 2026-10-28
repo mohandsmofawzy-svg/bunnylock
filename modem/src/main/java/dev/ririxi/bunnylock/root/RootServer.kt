@@ -100,6 +100,8 @@ object RootServer {
 
             "detect" -> Sys.detect()
 
+            "deviceSpoof.inspect" -> Sys.deviceIdentity()
+
             "aosp.state" -> Aosp.state(subId)
 
             "aosp.carriers" -> PhysicalChannels.report(simSlot)

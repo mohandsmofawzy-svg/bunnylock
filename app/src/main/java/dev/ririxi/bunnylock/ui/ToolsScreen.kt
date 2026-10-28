@@ -117,6 +117,8 @@ fun ToolsScreen(
 
         item { LanguageSection() }
 
+        item { DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing) }
+
         item {
             SectionHeader(stringResource(R.string.tools_updates))
             Segmented {
@@ -353,6 +355,81 @@ fun ToolsScreen(
         }
     }
 }
+
+@Composable
+fun DeviceSpoofingCard(
+    state: dev.ririxi.bunnylock.shizuku.DeviceSpoofingState,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    SectionHeader(stringResource(R.string.tools_device_spoofing))
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.tools_device_spoof_profile), style = MaterialTheme.typography.titleSmallEmphasized)
+                Text(stringResource(R.string.tools_device_spoof_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = state.isOn, onCheckedChange = onCheckedChange, enabled = !state.checking)
+        }
+        Text(
+            stringResource(R.string.tools_device_spoof_shizuku, stringResource(state.shizukuStatus.label)),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(stringResource(state.result.label(state.problem)), style = MaterialTheme.typography.bodyMediumEmphasized)
+        Text(stringResource(R.string.tools_device_spoof_target), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        if (state.originalProperties.isNotEmpty()) {
+            Text(stringResource(R.string.tools_device_spoof_system_values), style = MaterialTheme.typography.labelLarge)
+            SelectionContainer {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("ro.product.model", "ro.product.brand", "ro.product.manufacturer", "ro.product.device", "ro.product.name").forEach { key ->
+                        val value = state.originalProperties[key].orEmpty()
+                        if (value.isNotEmpty()) Text("$key: $value", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                    }
+                }
+            }
+            Text(stringResource(R.string.tools_device_spoof_app_values), style = MaterialTheme.typography.labelLarge)
+            state.appBuildValues.forEach { (key, value) ->
+                Text("$key: $value", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+        }
+
+        val currentRate = state.currentRefreshRate?.let { stringResource(R.string.tools_device_spoof_hz, it) }
+            ?: stringResource(R.string.common_unknown)
+        val supportedRates = state.supportedRefreshRates.takeIf { it.isNotEmpty() }?.joinToString(", ") { "${it.toInt()}" }
+            ?.let { stringResource(R.string.tools_device_spoof_supported_hz, it) }
+            ?: stringResource(R.string.tools_device_spoof_rates_unknown)
+        Text(stringResource(R.string.tools_device_spoof_refresh, currentRate, supportedRates), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.tools_device_spoof_fps_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private val dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.label: Int
+    get() = when (this) {
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.NOT_CHECKED -> R.string.tools_device_spoof_shizuku_not_checked
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.CHECKING -> R.string.tools_device_spoof_checking
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.CONNECTED -> R.string.tools_device_spoof_shizuku_connected
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.NOT_INSTALLED -> R.string.tools_device_spoof_shizuku_missing
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.NOT_RUNNING -> R.string.tools_device_spoof_shizuku_stopped
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.PERMISSION_DENIED -> R.string.tools_device_spoof_permission_denied
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.DISCONNECTED -> R.string.tools_device_spoof_disconnected
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.ERROR -> R.string.tools_device_spoof_error
+    }
+
+private fun dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.label(problem: dev.ririxi.bunnylock.shizuku.DeviceSpoofingProblem): Int =
+    when (this) {
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.IDLE -> R.string.tools_device_spoof_idle
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.LOADING -> R.string.tools_device_spoof_checking
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.SUCCESS -> R.string.tools_device_spoof_success
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.ERROR -> when (problem) {
+            dev.ririxi.bunnylock.shizuku.DeviceSpoofingProblem.SHIZUKU_NOT_INSTALLED -> R.string.tools_device_spoof_shizuku_missing
+            dev.ririxi.bunnylock.shizuku.DeviceSpoofingProblem.SHIZUKU_NOT_RUNNING -> R.string.tools_device_spoof_shizuku_stopped
+            dev.ririxi.bunnylock.shizuku.DeviceSpoofingProblem.PERMISSION_DENIED -> R.string.tools_device_spoof_permission_denied
+            dev.ririxi.bunnylock.shizuku.DeviceSpoofingProblem.CONNECTION_LOST -> R.string.tools_device_spoof_disconnected
+            else -> R.string.tools_device_spoof_error
+        }
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.UNSUPPORTED -> R.string.tools_device_spoof_unsupported
+        dev.ririxi.bunnylock.shizuku.DeviceSpoofingResult.UNVERIFIED -> R.string.tools_device_spoof_unverified
+    }
 
 private const val TAPS_FOR_FACT = 5
 

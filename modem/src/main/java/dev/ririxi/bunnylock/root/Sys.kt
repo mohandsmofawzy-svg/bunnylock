@@ -82,6 +82,26 @@ object Sys {
             .put("mtkOemHookChecked", JSONArray(runCatching { OemHook.diagnostics() }.getOrDefault(emptyList()).map { it.toJson() }))
     }
 
+    /** يقرأ خصائص الهوية فقط؛ لا يكتب خصائص ro.* المحمية. */
+    fun deviceIdentity(): JSONObject {
+        val keys = listOf(
+            "ro.product.model",
+            "ro.product.brand",
+            "ro.product.manufacturer",
+            "ro.product.device",
+            "ro.product.name",
+        )
+        val properties = JSONObject()
+        val systemProperties = Class.forName("android.os.SystemProperties")
+        val getProperty = systemProperties.getMethod("get", String::class.java)
+        keys.forEach { key ->
+            val value = getProperty.invoke(null, key) as? String
+                ?: throw IllegalStateException("System property $key returned no value")
+            properties.put(key, value)
+        }
+        return JSONObject().put("uid", Os.getuid()).put("properties", properties)
+    }
+
     /** [qrtr] settles it: a modem that answers QMI over QRTR is Qualcomm's, whatever the properties say. [hints] is lowercase. */
     private fun chipsetVendor(
         qrtr: Boolean,
