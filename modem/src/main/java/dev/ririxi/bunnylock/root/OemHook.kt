@@ -61,6 +61,7 @@ object OemHook {
     private class Target(
         val label: String,
         val isAtMethod: Boolean,
+        val supportsSlotSelection: Boolean,
         val sendRaw: OemRequest,
     ) {
         /** Some vendor AT methods return only the response body. A missing final result then means OK. */
@@ -74,8 +75,10 @@ object OemHook {
     private val passedOver = ArrayList<Target>()
 
     private val probe: Result<Target> by lazy { runCatching { findWorkingTarget() } }
+    private val slotBoundProbe: Result<Target> by lazy { runCatching { findWorkingTarget(requireSlotSelection = true) } }
 
     private val workingTarget: Target? get() = probe.getOrNull()
+    private val slotBoundTarget: Target? get() = slotBoundProbe.getOrNull()
 
     private fun serviceManager() = Class.forName("android.os.ServiceManager")
 
@@ -212,7 +215,7 @@ object OemHook {
                     it.takes(Int::class.javaPrimitiveType, ByteArray::class.java, ByteArray::class.java)
             }?.let { method ->
                 targets +=
-                    Target("$name.${method.name}", isAtMethod = false) { slot, request, response ->
+                    Target("$name.${method.name}", isAtMethod = false, supportsSlotSelection = true) { slot, request, response ->
                         method.invoke(service, slot, request, response) as Int
                     }
             }
@@ -221,7 +224,7 @@ object OemHook {
                 it.name == "invokeOemRilRequestRaw" && it.takes(ByteArray::class.java, ByteArray::class.java)
             }?.let { method ->
                 targets +=
-                    Target("$name.${method.name}", isAtMethod = false) { _, request, response ->
+                    Target("$name.${method.name}", isAtMethod = false, supportsSlotSelection = false) { _, request, response ->
                         method.invoke(service, request, response) as Int
                     }
             }
@@ -232,12 +235,24 @@ object OemHook {
                     it.takes(Int::class.javaPrimitiveType, ByteArray::class.java, ByteArray::class.java)
             }?.let { method ->
                 targets +=
-                    Target("$name.${method.name}", isAtMethod = false) { slot, request, response ->
+                    Target("$name.${method.name}", isAtMethod = false, supportsSlotSelection = true) { slot, request, response ->
                         method.invoke(service, Aosp.resolveSubId(-1, slot), request, response) as Int
                     }
             }
         methods.filter { AT_METHOD.containsMatchIn(it.name) }.forEach { method ->
-            atAdapter(service, method)?.let { targets += Target("$name.${signature(method)}", isAtMethod = true, sendRaw = it) }
+            atAdapter(service, method)?.let { adapter ->
+                val slotBound =
+                    method.takes(Int::class.javaPrimitiveType, String::class.java) ||
+                        method.takes(Int::class.javaPrimitiveType, ByteArray::class.java) ||
+                        method.parameterTypes.firstOrNull() == Int::class.javaPrimitiveType
+                targets +=
+                    Target(
+                        "$name.${signature(method)}",
+                        isAtMethod = true,
+                        supportsSlotSelection = slotBound,
+                        sendRaw = adapter,
+                    )
+            }
         }
         return targets
     }
@@ -269,18 +284,25 @@ object OemHook {
         return false
     }
 
-    private fun findWorkingTarget(): Target {
+    private fun findWorkingTarget(requireSlotSelection: Boolean = false): Target {
         val vendorServices =
             listOf(MEDIATEK_PHONE_SERVICE) +
                 serviceNames().filter { it != MEDIATEK_PHONE_SERVICE && it != PHONE_SERVICE && SERVICE_HINT.containsMatchIn(it) }
         for (name in vendorServices) {
             val binder = serviceBinder(name) ?: continue
-            val found = candidatesOrNone(name, binder).firstOrNull(::tryTarget)
+            val candidates =
+                candidatesOrNone(name, binder)
+                    .filter { !requireSlotSelection || it.supportsSlotSelection }
+            val found = candidates.firstOrNull(::tryTarget)
             if (found !== null) return found
         }
         // ITelephony routes to the RIL's OEM hook. Only MediaTek's RIL answers it, others never reply.
         if (isMediatek()) {
-            val phoneCandidates = serviceBinder(PHONE_SERVICE)?.let { candidatesOrNone(PHONE_SERVICE, it) }.orEmpty()
+            val phoneCandidates =
+                serviceBinder(PHONE_SERVICE)
+                    ?.let { candidatesOrNone(PHONE_SERVICE, it) }
+                    .orEmpty()
+                    .filter { !requireSlotSelection || it.supportsSlotSelection }
             val found = phoneCandidates.filter { !it.isAtMethod }.firstOrNull(::tryTarget)
             if (found !== null) return found
         }
@@ -293,6 +315,9 @@ object OemHook {
     }
 
     fun available(): Boolean = workingTarget !== null
+
+    /** True only when a probed passthrough sends the requested slot to its telephony API. */
+    fun supportsSlotSelection(): Boolean = slotBoundTarget !== null
 
     fun status(): String {
         val working = workingTarget
@@ -322,7 +347,7 @@ object OemHook {
         command: String,
         timeoutMs: Int,
     ): String {
-        val target = workingTarget ?: throw IOException("No RIL passthrough is available on this phone.")
+        val target = slotBoundTarget ?: workingTarget ?: throw IOException("No RIL passthrough is available on this phone.")
         val reply = sendTo(target, slot, command, timeoutMs)
         return if (reply.trimStart().startsWith(SERVICE_FAILURE)) "ERROR" else reply
     }

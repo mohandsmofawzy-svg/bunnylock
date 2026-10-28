@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,7 @@ import dev.ririxi.bunnylock.data.Signal
 import dev.ririxi.bunnylock.modem.ModemState
 import dev.ririxi.bunnylock.modem.andList
 import dev.ririxi.bunnylock.modem.formatPlmn
-import dev.ririxi.bunnylock.ui.theme.LocalLockGreen
+import dev.ririxi.bunnylock.ui.theme.LocalLockAccent
 import dev.ririxi.bunnylock.ui.theme.LocalSignalScale
 
 private val RSRP_STEPS = listOf(-80, -90, -100)
@@ -118,10 +117,10 @@ private fun Hero(
         state.modem.strayBand?.let { "$it, outside the locked bands" }
             ?: state.modem.strayChannel?.let { "$it, off the locked frequency" }
     val lockHeld = locked && strayLocation === null
-    val green = LocalLockGreen.current
+    val accent = LocalLockAccent.current
     val containerColor by animateColorAsState(
         if (lockHeld) {
-            green.copy(alpha = 0.2f).compositeOver(MaterialTheme.colorScheme.surfaceContainerHigh)
+            accent.copy(alpha = 0.2f).compositeOver(MaterialTheme.colorScheme.surfaceContainerHigh)
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
@@ -141,7 +140,7 @@ private fun Hero(
                         color =
                             when {
                                 strayLocation !== null -> MaterialTheme.colorScheme.error
-                                locked -> green
+                                locked -> accent
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
                     )
@@ -191,8 +190,26 @@ private fun Hero(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = onBands, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Bands") }
-                    FilledTonalButton(onClick = onCell, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Cell") }
+                    Button(
+                        onClick = onBands,
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.weight(1f),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                    ) { Text("Bands") }
+                    Button(
+                        onClick = onCell,
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.weight(1f),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                    ) { Text("Cell") }
                 }
             }
         }

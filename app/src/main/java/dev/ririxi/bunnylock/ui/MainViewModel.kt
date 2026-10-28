@@ -62,12 +62,11 @@ class MainViewModel(
 
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
 
-    private var pendingUnlock = false
     private var exitRequested = false
     private var updateCheckJob: Job? = null
 
     private val modem =
-        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onConnected = ::unlockIfPending, onRefreshed = ::refreshed)
+        ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onRefreshed = ::refreshed)
 
     // Shizuku hands over its binder a moment after the app starts, or whenever it is started later, so a failed attempt is redone then.
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
@@ -134,6 +133,7 @@ class MainViewModel(
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
         if (!exitRequested && modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
+        refreshAfterNotificationAction()
     }
 
     private fun shizukuLost() {
@@ -165,22 +165,18 @@ class MainViewModel(
         }
     }
 
-    /** "Unlock all" from the notification. Waits for the helper if the app was just started. */
-    fun unlockFromNotification() {
-        if (exitRequested) return
-        if (modem.state.value.root == RootState.Granted && modem.helperRunning) unlockEverything() else pendingUnlock = true
-    }
-
-    private fun unlockIfPending() {
-        if (!pendingUnlock) return
-        pendingUnlock = false
-        unlockEverything()
-    }
-
     // A refresh replaces the band groups, so picks that weren't applied start over.
     private fun refreshed(modemState: ModemState) {
         updateState { copy(bandSelections = emptyMap()) }
         updateNotification(modemState)
+        refreshAfterNotificationAction()
+    }
+
+    private fun refreshAfterNotificationAction() {
+        if (exitRequested || !prefs.getBoolean(LockNotifier.PREF_REFRESH_AFTER_ACTION, false)) return
+        if (modem.state.value.root != RootState.Granted || !modem.helperRunning) return
+        prefs.edit().remove(LockNotifier.PREF_REFRESH_AFTER_ACTION).apply()
+        modem.refresh()
     }
 
     /** Lists the locks that hold. One the phone has strayed from is left out. */
@@ -211,7 +207,14 @@ class MainViewModel(
         val lockedSince =
             prefs.getLong("lockedSince", 0L).takeIf { it > 0 }
                 ?: System.currentTimeMillis().also { prefs.edit().putLong("lockedSince", it).apply() }
-        LockNotifier.show(context, lines, lockedSince)
+        val sim = modemState.sims.firstOrNull { it.slot == modemState.sim - 1 }
+        LockNotifier.show(
+            context,
+            lines,
+            lockedSince,
+            simSlot = sim?.slot ?: -1,
+            subscriptionId = sim?.subId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+        )
     }
 
     fun loadSims() = modem.loadSims()

@@ -129,6 +129,10 @@ private const val RIL_NODE_PREFIX = "ril:"
 
 private fun rilNode(sim: Int) = "$RIL_NODE_PREFIX$sim"
 
+private object ModemOperationLock {
+    val mutex = Mutex()
+}
+
 private class LockUnanswered : IllegalStateException("The radio didn't answer, so it may not support locks through Android's radio HAL.")
 
 /** [runCatching] that lets coroutine cancellation through. */
@@ -147,6 +151,7 @@ class ModemController(
     private val starter: HelperStarter,
     private val onConnected: () -> Unit = {},
     private val onRefreshed: (ModemState) -> Unit = {},
+    private val requireSubscriptionBoundMediatek: Boolean = false,
 ) {
     private val context: Context = context.applicationContext
     private var helper: PrivilegedClient = RootClient(this.context)
@@ -183,7 +188,7 @@ class ModemController(
 
     private var connecting: Job? = null
     // يمنع تداخل تغيير الإعدادات مع تحديث الحالة؛ بعض أوامر المودم تغيّر الراديو على مراحل.
-    private val operationMutex = Mutex()
+    private val operationMutex = ModemOperationLock.mutex
     @Volatile private var closed = false
 
     fun close() {
@@ -240,11 +245,17 @@ class ModemController(
             val savedBackendName = prefs.getString("backend", null)
             val savedBackend = Backend.entries.firstOrNull { it.name == savedBackendName }
             val backend = savedBackend?.takeIf(::allowed) ?: suggestedBackend
+            if (requireSubscriptionBoundMediatek && backend == Backend.MEDIATEK) {
+                check(helper.call("mtk.slotBound").optBoolean("available")) {
+                    "This MediaTek AT interface can't prove which SIM slot it targets, so notification band locking was refused."
+                }
+            }
             updateState {
                 copy(root = RootState.Granted, access = access, device = device, autoBackend = suggestedBackend, backend = backend)
             }
             val node =
                 when {
+                    requireSubscriptionBoundMediatek && backend == Backend.MEDIATEK -> rilNode(current.sim)
                     shellOnly && device.mtkOemHook -> rilNode(sim = 1)
                     current.atNode.isNotEmpty() -> current.atNode
                     device.pixelRouter -> PIXEL_AT_NODE
@@ -291,6 +302,30 @@ class ModemController(
             val selectedSimPresent = sims.any { it.slot == sim - 1 }
             copy(sims = sims, sim = if (selectedSimPresent) sim else sims.first().slot + 1)
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun selectSimForAction(
+        slot: Int,
+        subscriptionId: Int,
+    ): Boolean {
+        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return false
+        val activeSubscriptions =
+            context.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList
+                ?: return false
+        val match =
+            activeSubscriptions.singleOrNull { it.subscriptionId == subscriptionId && it.simSlotIndex == slot }
+                ?: return false
+        if (activeSubscriptions.count { it.simSlotIndex == slot } != 1 ||
+            current.sims.count { it.slot == slot && it.subId == match.subscriptionId } != 1 ||
+            current.sims.count { it.slot == slot } != 1
+        ) {
+            return false
+        }
+        val sim = match.simSlotIndex + 1
+        val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
+        updateState { copy(sim = sim, atNode = atNode) }
+        return true
     }
 
     private fun subId(): Int =
@@ -1239,6 +1274,41 @@ class ModemController(
         bands: Collection<Int>,
     ): String = applyGroup(group, unlock = false, selected = bands)
 
+    @SuppressLint("MissingPermission")
+    suspend fun reapplyBandLocks(defaultDataSubscriptionId: Int): String =
+        change("reapply the selected band locks", "Selected band locks reapplied.") {
+            check(
+                subId() == defaultDataSubscriptionId &&
+                    SubscriptionManager.getDefaultDataSubscriptionId() == defaultDataSubscriptionId,
+            ) {
+                "The default data SIM changed before the band lock could be applied."
+            }
+            val lockedGroups = current.groups.filter { it.locked }
+            require(lockedGroups.isNotEmpty()) { "No currently locked bands were found to reapply." }
+            check(current.backend != Backend.PIXEL) {
+                "This modem requires a radio restart to apply band locks; no restart was requested."
+            }
+            if (current.backend == Backend.MEDIATEK) {
+                check(requireSubscriptionBoundMediatek && current.atNode == rilNode(current.sim)) {
+                    "The MediaTek modem isn't connected through a SIM-slot-bound interface."
+                }
+                check(helper.call("mtk.slotBound").optBoolean("available")) {
+                    "This MediaTek AT interface can't prove which SIM slot it targets, so notification band locking was refused."
+                }
+            }
+            lockedGroups.forEach { groupState ->
+                check(
+                    subId() == defaultDataSubscriptionId &&
+                        SubscriptionManager.getDefaultDataSubscriptionId() == defaultDataSubscriptionId,
+                ) {
+                    "The default data SIM changed before the band lock could be applied."
+                }
+                val note = applyGroupDirect(groupState.group, unlock = false, selected = groupState.current.orEmpty())
+                check(note?.startsWith("Android accepted the") != true) { note.orEmpty() }
+            }
+            null
+        }
+
     suspend fun unlockBands(group: Group): String = applyGroup(group, unlock = true)
 
     private suspend fun applyGroup(
@@ -1249,6 +1319,14 @@ class ModemController(
         if (unlock) "unlock the ${group.label} bands" else "lock the ${group.label} bands",
         if (unlock) "${group.label} bands unlocked." else "${group.label} bands locked.",
     ) {
+        applyGroupDirect(group, unlock, selected)
+    }
+
+    private suspend fun applyGroupDirect(
+        group: Group,
+        unlock: Boolean,
+        selected: Collection<Int>,
+    ): String? {
         val groupState = current.groups.first { it.group == group }
         val bands = if (unlock) groupState.supported else selected.distinct().sorted()
         require(bands.isNotEmpty()) { "Pick at least one band." }

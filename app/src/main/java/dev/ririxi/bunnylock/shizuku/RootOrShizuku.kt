@@ -12,6 +12,7 @@ import kotlinx.coroutines.CancellationException
 class RootOrShizuku(
     private val context: Context,
     private val onShizukuLost: () -> Unit,
+    private val allowShizukuPermissionRequest: Boolean = true,
 ) : HelperStarter {
     override suspend fun start(showStep: (String) -> Unit): StartedHelper {
         showStep("Asking for root access...")
@@ -34,11 +35,17 @@ class RootOrShizuku(
                 }
             throw RootException("No root access ($rootError), and $shizukuProblem")
         }
-        showStep("Connecting to Shizuku. Allow bunnylock if it asks...")
+        showStep(
+            if (allowShizukuPermissionRequest) {
+                "Connecting to Shizuku. Allow bunnylock if it asks..."
+            } else {
+                "Connecting to previously authorized Shizuku..."
+            },
+        )
         val shizukuClient = ShizukuClient(context, onShizukuLost)
         val hello =
             try {
-                shizukuClient.start()
+                shizukuClient.start(allowPermissionRequest = allowShizukuPermissionRequest)
             } catch (e: CancellationException) {
                 shizukuClient.stop()
                 throw e

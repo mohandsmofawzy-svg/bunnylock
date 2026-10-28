@@ -166,6 +166,8 @@ object RootServer {
 
             "mtk.findNode" -> JSONObject().put("node", Mediatek.findNode(sim) ?: JSONObject.NULL)
 
+            "mtk.slotBound" -> JSONObject().put("available", OemHook.supportsSlotSelection())
+
             "mtk.state" -> Mediatek.state(request.getString("node"))
 
             "mtk.setBands" ->

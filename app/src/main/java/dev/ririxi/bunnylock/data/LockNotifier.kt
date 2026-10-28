@@ -10,10 +10,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import dev.ririxi.bunnylock.MainActivity
+import dev.ririxi.bunnylock.NotificationActionReceiver
 import dev.ririxi.bunnylock.R
 
 object LockNotifier {
     const val ACTION_UNLOCK_ALL = "dev.ririxi.bunnylock.action.UNLOCK_ALL"
+    const val ACTION_LOCK_BAND = "dev.ririxi.bunnylock.action.LOCK_BAND"
+    const val EXTRA_SIM_SLOT = "dev.ririxi.bunnylock.extra.SIM_SLOT"
+    const val EXTRA_SUBSCRIPTION_ID = "dev.ririxi.bunnylock.extra.SUBSCRIPTION_ID"
+    const val PREF_REFRESH_AFTER_ACTION = "notificationActionNeedsRefresh"
     private const val CHANNEL_ID = "locks"
     private const val NOTIFICATION_ID = 1
 
@@ -32,6 +37,8 @@ object LockNotifier {
         context: Context,
         lines: List<String>,
         lockedSinceMillis: Long,
+        simSlot: Int,
+        subscriptionId: Int,
     ) {
         val permissionMissing =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -46,10 +53,17 @@ object LockNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val unlockAll =
-            PendingIntent.getActivity(
+            PendingIntent.getBroadcast(
                 context,
                 1,
-                Intent(context, MainActivity::class.java).setAction(ACTION_UNLOCK_ALL).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                actionIntent(context, ACTION_UNLOCK_ALL, simSlot, subscriptionId),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val lockBand =
+            PendingIntent.getBroadcast(
+                context,
+                2,
+                actionIntent(context, ACTION_LOCK_BAND),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val notification =
@@ -65,10 +79,23 @@ object LockNotifier {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openApp)
-                .addAction(Notification.Action.Builder(null, "Unlock all", unlockAll).build())
+                .addAction(Notification.Action.Builder(null, "Lock Band", lockBand).build())
+                .addAction(Notification.Action.Builder(null, "Unlock All", unlockAll).build())
                 .build()
         manager(context).notify(NOTIFICATION_ID, notification)
     }
 
     fun cancel(context: Context) = manager(context).cancel(NOTIFICATION_ID)
+
+    private fun actionIntent(
+        context: Context,
+        action: String,
+        simSlot: Int? = null,
+        subscriptionId: Int? = null,
+    ) = Intent(context, NotificationActionReceiver::class.java)
+        .setAction(action)
+        .apply {
+            if (simSlot !== null) putExtra(EXTRA_SIM_SLOT, simSlot)
+            if (subscriptionId !== null) putExtra(EXTRA_SUBSCRIPTION_ID, subscriptionId)
+        }
 }

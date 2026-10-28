@@ -66,9 +66,14 @@ class ShizukuClient(
 
     override val running: Boolean get() = shell?.running ?: (service?.alive == true)
 
-    override suspend fun start(): JSONObject {
+    override suspend fun start(): JSONObject = start(allowPermissionRequest = true)
+
+    suspend fun start(allowPermissionRequest: Boolean): JSONObject {
         if (Shizuku.isPreV11()) throw RootException("This Shizuku version is too old. Update Shizuku and try again.")
-        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) requestPermission()
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            if (!allowPermissionRequest) throw RootException("Allow bunnylock in Shizuku while the app is open, then try this notification action again.")
+            requestPermission()
+        }
         val shellFirst = prefs.getBoolean(PREF_SHELL_FIRST, false)
         return try {
             if (shellFirst) startInShell() else startAsService()

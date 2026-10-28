@@ -29,10 +29,13 @@ modem/build.gradle.kts
 الواجهة والتطبيق
 ----------------
 app/src/main/AndroidManifest.xml
-الصلاحيات والتعريف بنشاط التطبيق ومزود Shizuku؛ يجب أن تعكس مكوناته ملفات التنفيذ الفعلية.
+الصلاحيات والتعريف بنشاط التطبيق ومزود Shizuku ومستقبل وخدمة إجراءات الإشعار؛ يجب أن تعكس مكوناته ملفات التنفيذ الفعلية.
 
 app/src/main/java/dev/ririxi/bunnylock/MainActivity.kt
-نقطة بدء Compose، طلب الصلاحيات، استقبال إجراء إزالة الأقفال من الإشعار، وتطبيق لغة التطبيق واتجاه RTL.
+نقطة بدء Compose، طلب الصلاحيات، وتطبيق لغة التطبيق واتجاه RTL.
+
+app/src/main/java/dev/ririxi/bunnylock/NotificationActionReceiver.kt وNotificationActionService.kt
+تمرير إجراء Lock Band أو Unlock All من الإشعار إلى خدمة foreground تنفذ الأمر دون فتح MainActivity، مع التحقق من الشريحة قبل الاتصال بالمودم.
 
 app/src/main/java/dev/ririxi/bunnylock/ui/App.kt
 التنقل بين Home وBands وCell lock وTools، التحديث الحي، وشريط الإشعارات داخل التطبيق.
@@ -74,7 +77,7 @@ app/src/main/res/values-ar/strings.xml
 موارد اسم التطبيق للغة العربية.
 
 app/src/main/java/dev/ririxi/bunnylock/data/LockNotifier.kt
-إشعار حالة الأقفال وإجراء Unlock all الذي يعالجه MainActivity وMainViewModel.
+إشعار حالة الأقفال وإجراءا Lock Band وUnlock All الموجهان إلى NotificationActionReceiver، مع تمرير اشتراك الشريحة المرتبط بإجراء Unlock All.
 
 app/src/main/java/dev/ririxi/bunnylock/data/Updates.kt
 فحص إصدار GitHub بمهلات اتصال وقراءة محددة.
@@ -96,7 +99,7 @@ app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuService.kt
 مكتبة المودم وقفل الترددات
 --------------------------
 modem/src/main/java/dev/ririxi/bunnylock/modem/ModemController.kt
-منسق الاتصال والتحديث والأقفال والراديو. يسلسل التغيير وقراءة الحالة وAT وQMI، ويرفض الأوامر بعد بدء الإغلاق. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
+منسق الاتصال والتحديث والأقفال والراديو. يسلسل التغيير وقراءة الحالة وAT وQMI عبر قفل مشترك داخل العملية، ويرفض الأوامر بعد بدء الإغلاق. يتيح إجراء الإشعار اختيار الاشتراك النشط المطابق للشريحة قبل إرسال الأوامر. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
 
 modem/src/main/java/dev/ririxi/bunnylock/modem/Model.kt
 نماذج الحالة والواجهات المدعومة وبيانات الجهاز والنطاقات.
@@ -157,7 +160,7 @@ modem/src/main/java/dev/ririxi/bunnylock/root/PhysicalChannels.kt
 
 modem/src/main/java/dev/ririxi/bunnylock/root/OemHook.kt
 اكتشاف والتواصل مع واجهات OEM hook.
-عند اختيار ril:1 يمر الأمر من هنا إلى واجهة الشركة المصنّعة بدل فتح TTY.
+عند اختيار ril:<SIM> يمر الأمر إلى واجهة الشركة المصنّعة بدل فتح TTY. يميز مسار إشعار Lock Band واجهات OEM التي تمرر فتحة SIM صراحةً، ويرفض القفل إن لم يجد واجهة مجرّبة تدعم ذلك.
 
 modem/src/main/java/dev/ririxi/bunnylock/root/OemCallback.kt
 استقبال نتائج OEM hook وإرجاعها لطبقة الأمر.
