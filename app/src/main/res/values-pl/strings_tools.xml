@@ -104,6 +104,10 @@
     <string name="tools_about">O aplikacji</string>
     <string name="tools_author">od @ririxi, twórcy BTSearch.pl</string>
     <string name="tools_version">Wersja %1$s</string>
+    <string name="tools_exit">Wyjdź</string>
+    <string name="tools_exit_hint">Zatrzymaj monitorowanie w tle i zamknij bunnylock.</string>
+    <string name="tools_exit_confirmation">Game Mode, monitorowanie Dynamic PLMN i aktywne zadania aplikacji zostaną zatrzymane. Ustawienia i istniejące blokady modemu pozostaną zachowane. Otwórz bunnylock ponownie, aby wznowić włączone funkcje.</string>
+    <string name="tools_exit_cancel">Anuluj</string>
     <string name="tools_bunny_fact">Królicza ciekawostka: %1$s</string>
     <string-array name="bunny_facts">
         <item>W wielu polskich domach drobne prezenty na Wielkanoc przynosi zajączek.</item>

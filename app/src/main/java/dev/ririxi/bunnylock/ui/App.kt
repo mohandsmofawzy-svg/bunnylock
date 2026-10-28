@@ -3,6 +3,7 @@
 package dev.ririxi.bunnylock.ui
 
 import androidx.annotation.StringRes
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -105,6 +106,7 @@ enum class Tab(
 @Composable
 fun BunnyApp(vm: MainViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val activity = LocalActivity.current
     var selectedTab by rememberSaveable { mutableStateOf(Tab.HOME) }
     if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) {
         LiveRefresh(vm, state.gameModeEnabled)
@@ -221,7 +223,9 @@ fun BunnyApp(vm: MainViewModel) {
                             Tab.BANDS -> BandsScreen(state, vm, contentPadding)
                             Tab.CELL -> CellScreen(state, vm, contentPadding)
                             Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding)
-                            Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
+                            Tab.TOOLS -> ToolsScreen(state, vm, contentPadding) {
+                                vm.exitApplication { activity?.finishAndRemoveTask() }
+                            }
                         }
                     }
                 }

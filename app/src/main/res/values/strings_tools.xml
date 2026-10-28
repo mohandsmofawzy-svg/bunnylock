@@ -108,6 +108,10 @@
     <string name="tools_about">About</string>
     <string name="tools_author">by @Alpha (muhmmed developer)</string>
     <string name="tools_version">Version %1$s</string>
+    <string name="tools_exit">Exit</string>
+    <string name="tools_exit_hint">Stop background monitoring and close bunnylock.</string>
+    <string name="tools_exit_confirmation">Game Mode, Dynamic PLMN monitoring, and active app tasks will stop. Your settings and existing modem locks will be kept. Open bunnylock again to resume enabled features.</string>
+    <string name="tools_exit_cancel">Cancel</string>
     <string name="tools_bunny_fact">Bunny fact: %1$s</string>
     <string-array name="bunny_facts">
         <item>A rabbit\'s teeth never stop growing, so they have to keep chewing to wear them down.</item>

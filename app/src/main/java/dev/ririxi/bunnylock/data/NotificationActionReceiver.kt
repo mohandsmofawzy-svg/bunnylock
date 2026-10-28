@@ -9,17 +9,24 @@ import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.modem.ModemController
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** ينفذ إجراءات الإشعار؛ العمليات غير المتزامنة تستخدم goAsync ثم تنهي النتيجة وتغلق مواردها. */
 class NotificationActionReceiver : BroadcastReceiver() {
     /** يوجه الإجراء إلى تغيير تفضيل محلي أو عملية مودم قصيرة خارج دورة حياة Activity. */
     override fun onReceive(context: Context, intent: Intent) {
+        if (context.getSharedPreferences(DynamicPlmnService.PREFERENCES, Context.MODE_PRIVATE)
+                .getBoolean("appExitRequested", false)
+        ) return
         when (intent.action) {
             LockNotifier.ACTION_TOGGLE_LOCKS -> {
                 Toast.makeText(context, "Toggled locks", Toast.LENGTH_SHORT).show()
@@ -63,35 +70,74 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         val appContext = context.applicationContext
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        scope.launch {
-            var modem: ModemController? = null
-            try {
-                val connected = CompletableDeferred<Unit>()
-                modem = ModemController(
-                    appContext,
-                    scope,
-                    RootOrShizuku(appContext) {},
-                    onConnected = { connected.complete(Unit) },
-                )
-                modem.connect()
-                withTimeout(CONNECT_TIMEOUT_MILLIS) { connected.await() }
-                when (action) {
-                    LockNotifier.ACTION_RESTART_RADIO -> modem.radioCycle()
-                    LockNotifier.ACTION_REBOOT_MODEM -> modem.rebootModem()
+        val pendingFinished = AtomicBoolean(false)
+        fun finishPendingResult() {
+            if (pendingFinished.compareAndSet(false, true)) pendingResult.finish()
+        }
+        val job =
+            scope.launch {
+                var modem: ModemController? = null
+                try {
+                    val connected = CompletableDeferred<Unit>()
+                    modem = ModemController(
+                        appContext,
+                        scope,
+                        RootOrShizuku(appContext) {},
+                        onConnected = { connected.complete(Unit) },
+                    )
+                    modem.connect()
+                    withTimeout(CONNECT_TIMEOUT_MILLIS) { connected.await() }
+                    when (action) {
+                        LockNotifier.ACTION_RESTART_RADIO -> modem.radioCycle()
+                        LockNotifier.ACTION_REBOOT_MODEM -> modem.rebootModem()
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Log.e(TAG, "Could not complete notification modem action", e)
+                } finally {
+                    try {
+                        modem?.close()
+                    } finally {
+                        scope.cancel()
+                        finishPendingResult()
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Could not complete notification modem action", e)
-            } finally {
-                modem?.close()
-                scope.cancel()
-                pendingResult.finish()
             }
+        synchronized(actionLock) {
+            if (stoppingForExit) {
+                job.cancel(CancellationException("Application is exiting"))
+            } else {
+                activeModemActions += job
+            }
+        }
+        job.invokeOnCompletion {
+            activeModemActions -= job
+            scope.cancel()
+            finishPendingResult()
         }
     }
 
-    private companion object {
+    companion object {
         // حد انتظار إنشاء اتصال المساعد قبل التخلي عن إجراء الإشعار.
-        const val CONNECT_TIMEOUT_MILLIS = 90_000L
-        const val TAG = "BunnyLockAction"
+        private const val CONNECT_TIMEOUT_MILLIS = 90_000L
+        private const val TAG = "BunnyLockAction"
+        private val actionLock = Any()
+        private val activeModemActions = ConcurrentHashMap.newKeySet<Job>()
+        @Volatile
+        private var stoppingForExit = false
+
+        fun stopForExit(): List<Job> {
+            val jobs =
+                synchronized(actionLock) {
+                    stoppingForExit = true
+                    activeModemActions.toList()
+                }
+            jobs.forEach { it.cancel(CancellationException("Application is exiting")) }
+            return jobs
+        }
+
+        fun resumeAfterExit() {
+            synchronized(actionLock) { stoppingForExit = false }
+        }
     }
 }

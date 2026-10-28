@@ -215,8 +215,14 @@ class NotificationFixService : Service() {
 
     override fun onDestroy() {
         fixJob?.cancel()
-        modem?.close()
-        serviceScope.cancel()
+        try {
+            modem?.close()
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Could not close the modem controller while stopping Smart Fix", e)
+        } finally {
+            modem = null
+            serviceScope.cancel()
+        }
         super.onDestroy()
     }
 
@@ -232,6 +238,12 @@ class NotificationFixService : Service() {
             val intent = Intent(context.applicationContext, NotificationFixService::class.java)
                 .setAction(LockNotifier.ACTION_FIX)
             ContextCompat.startForegroundService(context.applicationContext, intent)
+        }
+
+        fun stopForExit(context: Context) {
+            val appContext = context.applicationContext
+            appContext.stopService(Intent(appContext, NotificationFixService::class.java))
+            LockNotifier.restore(appContext)
         }
     }
 }

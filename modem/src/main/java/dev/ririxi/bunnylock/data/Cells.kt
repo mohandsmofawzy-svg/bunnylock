@@ -63,6 +63,9 @@ data class Cell(
     val operator: String? = null,
     /** Only LTE cells report it, and usually only the serving one. */
     val bandwidthKhz: Int? = null,
+    val sinr: Int? = null,
+    /** Android's elapsed-realtime timestamp for the radio measurement; null for modem-only reports. */
+    val measurementTimeMillis: Long? = null,
 ) {
     val key get() = "$rat:$arfcn:$pci"
 
@@ -119,7 +122,7 @@ object Cells {
                     },
                 )
             } catch (_: SecurityException) {
-                if (cont.isActive) cont.resume(emptyList())
+                if (cont.isActive) cont.resume(null)
             }
         }
 
@@ -183,6 +186,8 @@ object Cells {
             lteBand(identity.bands, earfcn),
             registered = info.isRegistered,
             rsrp = info.cellSignalStrength.rsrp.availableOrNull(),
+            sinr = info.cellSignalStrength.rssnr.availableOrNull(),
+            measurementTimeMillis = info.timestampMillis,
             source = "android",
             bandwidthKhz = identity.bandwidth.availableOrNull(),
         )
@@ -200,6 +205,8 @@ object Cells {
             nrBand(identity.bands, nrarfcn),
             registered = info.isRegistered,
             rsrp = signal.ssRsrp.availableOrNull(),
+            sinr = signal.ssSinr.availableOrNull(),
+            measurementTimeMillis = info.timestampMillis,
             source = "android",
         )
     }
@@ -304,6 +311,8 @@ object Cells {
             byKey[cell.key] = earlier?.copy(
                 registered = earlier.registered || cell.registered,
                 rsrp = earlier.rsrp ?: cell.rsrp,
+                sinr = earlier.sinr ?: cell.sinr,
+                measurementTimeMillis = earlier.measurementTimeMillis ?: cell.measurementTimeMillis,
                 note = earlier.note.ifEmpty { cell.note },
                 band = earlier.band ?: cell.band,
                 plmn = earlier.plmn ?: cell.plmn,

@@ -78,6 +78,7 @@
     <string name="modem_note_mode_airplane">The modem only switches modes with the radio off, so airplane mode came on for a moment.</string>
     <string name="modem_note_mode_reapplied">SIM %1$d stayed on its old network, so the mode was set again with airplane mode on for a moment.</string>
     <string name="modem_note_mode_stayed">SIM %1$d stayed on its old network. Turning airplane mode on and off may apply the mode.</string>
+    <string name="modem_note_mode_unverified">The network type could not be verified, so bunnylock did not retry the mode change.</string>
     <string name="modem_note_mode_held_back">%1$s The mode stays set and applies in full once that changes.</string>
     <string name="modem_backend_no_nr_mode">The %1$s backend can\'t change the 5G mode.</string>
     <string name="modem_current_backend_no_nr_mode">The current backend can\'t change the 5G mode.</string>

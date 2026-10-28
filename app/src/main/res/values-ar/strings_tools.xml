@@ -98,6 +98,10 @@
     <string name="tools_about">حول التطبيق</string>
     <string name="tools_author">بواسطة @ririxi، مطور BTSearch.pl</string>
     <string name="tools_version">الإصدار %1$s</string>
+    <string name="tools_exit">خروج</string>
+    <string name="tools_exit_hint">إيقاف المراقبة في الخلفية وإغلاق Bunny Lock.</string>
+    <string name="tools_exit_confirmation">سيتم إيقاف Game Mode ومراقبة Dynamic PLMN والمهام النشطة التابعة للتطبيق. ستبقى إعداداتك وأقفال المودم الحالية محفوظة. افتح Bunny Lock مجددًا لاستئناف الميزات المفعّلة.</string>
+    <string name="tools_exit_cancel">إلغاء</string>
     <string name="tools_bunny_fact">معلومة عن الأرانب: %1$s</string>
     <string-array name="bunny_facts">
         <item>أسنان الأرنب تنمو باستمرار، لذا يحتاج إلى المضغ ليبريها.</item>

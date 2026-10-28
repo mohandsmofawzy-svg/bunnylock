@@ -104,6 +104,10 @@
     <string name="tools_about">关于</string>
     <string name="tools_author">作者 @ririxi（BTSearch.pl 开发者）</string>
     <string name="tools_version">版本 %1$s</string>
+    <string name="tools_exit">退出</string>
+    <string name="tools_exit_hint">停止后台监控并关闭 bunnylock。</string>
+    <string name="tools_exit_confirmation">Game Mode、Dynamic PLMN 监控和应用正在执行的任务将停止。你的设置和现有基带锁定将保留。重新打开 bunnylock 即可恢复已启用的功能。</string>
+    <string name="tools_exit_cancel">取消</string>
     <string name="tools_bunny_fact">兔兔冷知识：%1$s</string>
     <string-array name="bunny_facts">
         <item>传说月亮上住着一只玉兔，陪着嫦娥在广寒宫里捣药。</item>

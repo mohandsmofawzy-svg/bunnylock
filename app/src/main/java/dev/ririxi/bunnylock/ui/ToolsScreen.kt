@@ -20,11 +20,13 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -67,7 +69,9 @@ fun ToolsScreen(
     state: UiState,
     vm: MainViewModel,
     contentPadding: PaddingValues,
+    onExit: () -> Unit,
 ) {
+    var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
     var atCommand by rememberSaveable { mutableStateOf("") }
     // The QMI console starts on NAS "get system info" (service 3, message 0x004D), a read-only request.
     var qmiService by rememberSaveable { mutableStateOf("3") }
@@ -352,7 +356,40 @@ fun ToolsScreen(
         item {
             SectionHeader(stringResource(R.string.tools_about))
             About()
+            Segmented {
+                item {
+                    ActionItem(
+                        it,
+                        stringResource(R.string.tools_exit),
+                        stringResource(R.string.tools_exit_hint),
+                        Icons.Rounded.Close,
+                        enabled = true,
+                        onClick = { showExitConfirmation = true },
+                    )
+                }
+            }
         }
+    }
+
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text(stringResource(R.string.tools_exit)) },
+            text = { Text(stringResource(R.string.tools_exit_confirmation)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        onExit()
+                    },
+                ) { Text(stringResource(R.string.tools_exit)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text(stringResource(R.string.tools_exit_cancel))
+                }
+            },
+        )
     }
 }
 

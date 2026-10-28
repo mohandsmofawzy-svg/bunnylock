@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.ririxi.bunnylock.R
@@ -12,6 +13,8 @@ import dev.ririxi.bunnylock.data.Cell
 import dev.ririxi.bunnylock.data.DynamicPlmnService
 import dev.ririxi.bunnylock.data.GameModeService
 import dev.ririxi.bunnylock.data.LockNotifier
+import dev.ririxi.bunnylock.data.NotificationActionReceiver
+import dev.ririxi.bunnylock.data.NotificationFixService
 import dev.ririxi.bunnylock.data.ProfileStore
 import dev.ririxi.bunnylock.data.Rat
 import dev.ririxi.bunnylock.data.Updates
@@ -35,6 +38,9 @@ import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import dev.ririxi.bunnylock.shizuku.ShizukuClient
 import dev.ririxi.bunnylock.shizuku.DeviceSpoofingController
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +49,9 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 import java.util.UUID
 
 private const val MAX_TOOL_OUTPUT_CHARS = 8000
@@ -53,8 +62,12 @@ class MainViewModel(
 ) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("bunnylock", Context.MODE_PRIVATE)
     private val deviceSpoofing = DeviceSpoofingController(app)
+    private val trackedJobs = mutableSetOf<Job>()
+    @Volatile
+    private var exiting = false
+    private var shizukuWatcherStopped = false
     private val gameModePreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "gameModeEnabled") {
+        if (!exiting && key == "gameModeEnabled") {
             val enabled = prefs.getBoolean("gameModeEnabled", false)
             modem.setGameModeEnabled(enabled)
             syncGameModeService(enabled)
@@ -62,7 +75,7 @@ class MainViewModel(
         }
     }
     private val dynamicPlmnPreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key?.startsWith("dynamicPlmn") == true) syncDynamicPlmnStatus()
+        if (!exiting && key?.startsWith("dynamicPlmn") == true) syncDynamicPlmnStatus()
     }
 
     private val _ui =
@@ -101,19 +114,24 @@ class MainViewModel(
     val events = merge(_events, modem.events)
 
     init {
+        prefs.edit().putBoolean(APP_EXIT_REQUESTED_KEY, false).apply()
+        NotificationActionReceiver.resumeAfterExit()
         prefs.registerOnSharedPreferenceChangeListener(gameModePreferenceListener)
         prefs.registerOnSharedPreferenceChangeListener(dynamicPlmnPreferenceListener)
         modem.connect()
         syncGameModeService(prefs.getBoolean("gameModeEnabled", false))
+        syncDynamicPlmnService()
+        syncDynamicPlmnStatus()
         checkForUpdate()
     }
 
     private fun appVersion(): String? = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull()
 
-    private fun checkForUpdate() =
-        viewModelScope.launch {
-            if (!ui.checkUpdates) return@launch
-            val installed = appVersion() ?: return@launch
+    private fun checkForUpdate() {
+        if (exiting) return
+        launchTracked {
+            if (!ui.checkUpdates) return@launchTracked
+            val installed = appVersion() ?: return@launchTracked
             try {
                 val release = Updates.newerThan(installed)?.takeIf { it.version != prefs.getString("skippedUpdate", null) }
                 if (ui.checkUpdates) updateState { copy(update = release) }
@@ -123,6 +141,7 @@ class MainViewModel(
                 modem.log("Couldn't check for updates. ${e.message?.takeIf { it.isNotBlank() }?.asSentence() ?: "Something went wrong."}")
             }
         }
+    }
 
     fun dismissUpdate() = updateState { copy(update = null) }
 
@@ -141,18 +160,22 @@ class MainViewModel(
     override fun onCleared() {
         prefs.unregisterOnSharedPreferenceChangeListener(gameModePreferenceListener)
         prefs.unregisterOnSharedPreferenceChangeListener(dynamicPlmnPreferenceListener)
-        stopWatchingShizuku()
+        stopShizukuWatcher()
         modem.close()
     }
 
-    fun connect() = modem.connect()
+    fun connect() {
+        if (!exiting) modem.connect()
+    }
 
     private var shownLocales = app.resources.configuration.locales
 
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
+        if (exiting) return
         syncDynamicPlmnStatus()
         if (ui.gameModeEnabled) syncGameModeService(enabled = true)
+        syncDynamicPlmnService()
         deviceSpoofing.refreshShizukuStatus()
         if (modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
         val locales = app.resources.configuration.locales
@@ -165,9 +188,12 @@ class MainViewModel(
         modem.helperLost(Text(R.string.system_shizuku_lost))
     }
 
-    fun refresh() = modem.refresh()
+    fun refresh() {
+        if (!exiting) modem.refresh()
+    }
 
     fun setDynamicPlmnEnabled(enabled: Boolean) {
+        if (exiting) return
         if (enabled) {
             try {
                 DynamicPlmnService.start(app)
@@ -182,6 +208,7 @@ class MainViewModel(
     }
 
     fun retryDynamicPlmn() {
+        if (exiting) return
         try {
             DynamicPlmnService.retry(app)
         } catch (e: RuntimeException) {
@@ -196,15 +223,27 @@ class MainViewModel(
         updateState { copy(dynamicPlmn = status) }
     }
 
+    private fun syncDynamicPlmnService() {
+        if (exiting) return
+        try {
+            DynamicPlmnService.sync(app)
+        } catch (e: RuntimeException) {
+            _events.tryEmit(e.message ?: app.getString(R.string.dynamic_plmn_start_failed))
+        }
+    }
+
     fun setDeviceSpoofing(enabled: Boolean) {
-        viewModelScope.launch { deviceSpoofing.setHighRefreshRate(enabled) }
+        if (!exiting) launchTracked { deviceSpoofing.setHighRefreshRate(enabled) }
     }
 
     fun selectDeviceRefreshRate(rate: Float) = deviceSpoofing.selectRefreshRate(rate)
 
-    suspend fun refreshConnection() = modem.refreshConnection()
+    suspend fun refreshConnection() {
+        if (!exiting) modem.refreshConnection()
+    }
 
     fun handleSystemAction(action: String?) {
+        if (exiting) return
         if (action == null || action !in setOf(
                 LockNotifier.ACTION_UNLOCK_ALL,
                 LockNotifier.ACTION_TOGGLE_LOCKS,
@@ -302,11 +341,12 @@ class MainViewModel(
     private fun launchAction(
         refreshAfter: Boolean = true,
         block: suspend () -> String,
-    ) = viewModelScope.launch {
+    ) = launchTracked {
+        if (exiting) return@launchTracked
         if (!modem.helperRunning) {
             _events.emit(app.getString(R.string.system_helper_not_running))
             modem.reconnect()
-            return@launch
+            return@launchTracked
         }
         updateState { copy(busy = true) }
         try {
@@ -319,6 +359,80 @@ class MainViewModel(
         } finally {
             updateState { copy(busy = false) }
         }
+    }
+
+    fun exitApplication(onStopped: () -> Unit) {
+        val jobs =
+            synchronized(trackedJobs) {
+                if (exiting) return
+                exiting = true
+                trackedJobs.toList().also { trackedJobs.clear() }
+            }
+        viewModelScope.launch {
+            val persistedExitRequest =
+                withContext(Dispatchers.IO) {
+                    prefs.edit().putBoolean(APP_EXIT_REQUESTED_KEY, true).commit()
+                }
+            if (!persistedExitRequest) Log.e(TAG, "Could not persist the app-exit marker")
+
+            jobs.forEach { it.cancel(CancellationException("Application is exiting")) }
+            stopServiceForExit("modem controller") { modem.close() }
+            stopServiceForExit("Shizuku watcher") { stopShizukuWatcher() }
+            stopServiceForExit("Game Mode") { GameModeService.stopForExit(app) }
+            stopServiceForExit("Dynamic PLMN") { DynamicPlmnService.stopForExit(app) }
+            stopServiceForExit("Smart Fix") { NotificationFixService.stopForExit(app) }
+            val notificationJobs =
+                try {
+                    NotificationActionReceiver.stopForExit()
+                } catch (e: RuntimeException) {
+                    Log.e(TAG, "Could not cancel notification modem actions during app exit", e)
+                    emptyList()
+                }
+
+            val completed = withTimeoutOrNull(EXIT_JOB_CLEANUP_TIMEOUT_MILLIS) { (jobs + notificationJobs).joinAll() } != null
+            if (!completed) Log.w(TAG, "Some app-scoped work did not finish before the exit cleanup timeout")
+            onStopped()
+        }
+    }
+
+    private fun launchTracked(block: suspend () -> Unit): Job {
+        val job =
+            viewModelScope.launch(kotlinx.coroutines.CoroutineStart.LAZY) {
+                if (!exiting) block()
+            }
+        synchronized(trackedJobs) {
+            if (exiting) {
+                job.cancel(CancellationException("Application is exiting"))
+            } else {
+                trackedJobs += job
+                job.start()
+            }
+        }
+        job.invokeOnCompletion { synchronized(trackedJobs) { trackedJobs -= job } }
+        return job
+    }
+
+    private fun stopShizukuWatcher() {
+        if (shizukuWatcherStopped) return
+        shizukuWatcherStopped = true
+        stopWatchingShizuku()
+    }
+
+    private inline fun stopServiceForExit(
+        service: String,
+        stop: () -> Unit,
+    ) {
+        try {
+            stop()
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Could not stop $service during app exit", e)
+        }
+    }
+
+    private companion object {
+        const val APP_EXIT_REQUESTED_KEY = "appExitRequested"
+        const val EXIT_JOB_CLEANUP_TIMEOUT_MILLIS = 5_000L
+        const val TAG = "BunnyLockExit"
     }
 
     private fun groupState(group: Group): BandGroupState? = modem.state.value.groups.firstOrNull { it.group == group }

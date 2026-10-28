@@ -71,6 +71,7 @@
     <string name="modem_note_mode_airplane">لا يبدل المودم الأوضاع إلا عند إيقاف الراديو، لذا فُعّل وضع الطيران للحظات.</string>
     <string name="modem_note_mode_reapplied">بقيت الشريحة %1$d على شبكتها السابقة، فأُعيد ضبط الوضع مع تفعيل وضع الطيران للحظات.</string>
     <string name="modem_note_mode_stayed">بقيت الشريحة %1$d على شبكتها السابقة. قد يؤدي تشغيل وضع الطيران وإيقافه إلى تطبيق الوضع.</string>
+    <string name="modem_note_mode_unverified">تعذر التحقق من نوع الشبكة، لذلك لم يُعِد Bunny Lock محاولة تغيير الوضع.</string>
     <string name="modem_note_mode_held_back">%1$s يظل الوضع مضبوطًا ويُطبق بالكامل عند زوال هذا السبب.</string>
     <string name="modem_backend_no_nr_mode">لا يمكن للواجهة الخلفية %1$s تغيير وضع 5G.</string>
     <string name="modem_current_backend_no_nr_mode">لا يمكن للواجهة الخلفية الحالية تغيير وضع 5G.</string>

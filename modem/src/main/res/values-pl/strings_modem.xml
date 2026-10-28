@@ -78,6 +78,7 @@
     <string name="modem_note_mode_airplane">Modem zmienia tryb tylko przy wyłączonym radiu, więc na chwilę włączył się tryb samolotowy.</string>
     <string name="modem_note_mode_reapplied">SIM %1$d została w starej sieci, więc tryb ustawiono jeszcze raz, na chwilę włączając tryb samolotowy.</string>
     <string name="modem_note_mode_stayed">SIM %1$d została w starej sieci. Włączenie i wyłączenie trybu samolotowego może pomóc.</string>
+    <string name="modem_note_mode_unverified">Nie udało się potwierdzić typu sieci, więc bunnylock nie ponowił zmiany trybu.</string>
     <string name="modem_note_mode_held_back">%1$s Tryb zostaje ustawiony i zadziała w pełni, gdy to się zmieni.</string>
     <string name="modem_backend_no_nr_mode">Backend %1$s nie obsługuje zmiany trybu 5G.</string>
     <string name="modem_current_backend_no_nr_mode">Obecny backend nie obsługuje zmiany trybu 5G.</string>

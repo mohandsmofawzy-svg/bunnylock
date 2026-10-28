@@ -10,6 +10,7 @@ class DynamicPlmnBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         val prefs = context.getSharedPreferences(DynamicPlmnService.PREFERENCES, Context.MODE_PRIVATE)
+        if (prefs.getBoolean("appExitRequested", false)) return
         if (prefs.getBoolean("gameModeEnabled", false)) {
             try {
                 GameModeService.sync(context, enabled = true)

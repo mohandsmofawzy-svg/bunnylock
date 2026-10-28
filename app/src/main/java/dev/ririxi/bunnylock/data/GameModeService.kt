@@ -17,6 +17,7 @@ import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.GameModeOperatingState
 import dev.ririxi.bunnylock.modem.GameModePolicy
+import dev.ririxi.bunnylock.modem.GameModeSignalQuality
 import dev.ririxi.bunnylock.modem.ModemController
 import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
@@ -43,7 +44,7 @@ class GameModeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!isEnabled()) {
+        if (!isEnabled() || appExitRequested(this)) {
             startRequested = false
             stopSelf(startId)
             return START_NOT_STICKY
@@ -141,9 +142,11 @@ class GameModeService : Service() {
                 }
                 try {
                     controller.refreshConnection()
-                    val signal = controller.bestObservedSignal
                     val operatingState = controller.gameModeOperatingState
-                    val hasSignal = signal?.rsrp != null || signal?.sinr != null
+                    val hasSignal =
+                        controller.latestGameModeObservation?.signalQuality?.let {
+                            it != GameModeSignalQuality.UNKNOWN
+                        } == true
                     if (hasSignal && (operatingState != previousState || lastMonitorError != null || !hasReportedState)) {
                         previousState = operatingState
                         hasReportedState = true
@@ -158,8 +161,9 @@ class GameModeService : Service() {
                                 },
                             ),
                         )
-                    } else if (!hasSignal && lastMonitorError != null) {
+                    } else if (!hasSignal && (lastMonitorError != null || hasReportedState)) {
                         updateNotification(getString(R.string.game_mode_notification_monitoring))
+                        hasReportedState = false
                     }
                     val recoveryLog =
                         controller.state.value.log.firstOrNull {
@@ -226,12 +230,22 @@ class GameModeService : Service() {
     override fun onDestroy() {
         monitorJob?.cancel()
         monitorJob = null
-        modem?.close()
-        modem = null
-        serviceScope.cancel()
-        running = false
-        startRequested = false
+        var restart = false
+        try {
+            modem?.close()
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Could not close the modem controller while stopping Game Mode", e)
+        } finally {
+            modem = null
+            serviceScope.cancel()
+            running = false
+            startRequested = false
+            restart = stoppingForExit && restartAfterExit && isEnabled()
+            stoppingForExit = false
+            restartAfterExit = false
+        }
         super.onDestroy()
+        if (restart) sync(this, enabled = true)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -253,6 +267,12 @@ class GameModeService : Service() {
         private var startRequested = false
 
         @Volatile
+        private var stoppingForExit = false
+
+        @Volatile
+        private var restartAfterExit = false
+
+        @Volatile
         private var uiMonitoring = false
 
         fun setUiMonitoring(active: Boolean) {
@@ -264,11 +284,17 @@ class GameModeService : Service() {
             val serviceIntent = Intent(appContext, GameModeService::class.java)
             if (!enabled) {
                 startRequested = false
+                stoppingForExit = false
+                restartAfterExit = false
                 appContext.stopService(serviceIntent)
                 appContext.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
                 return
             }
-            if (running || startRequested) return
+            if (appExitRequested(appContext)) return
+            if (running || startRequested) {
+                if (stoppingForExit) restartAfterExit = true
+                return
+            }
             startRequested = true
             try {
                 ContextCompat.startForegroundService(appContext, serviceIntent)
@@ -277,5 +303,20 @@ class GameModeService : Service() {
                 throw e
             }
         }
+
+        fun stopForExit(context: Context) {
+            val appContext = context.applicationContext
+            stoppingForExit = true
+            restartAfterExit = false
+            startRequested = false
+            val stopped = appContext.stopService(Intent(appContext, GameModeService::class.java))
+            if (!stopped && !running) stoppingForExit = false
+            uiMonitoring = false
+            appContext.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        }
+
+        private fun appExitRequested(context: Context): Boolean =
+            context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getBoolean("appExitRequested", false)
     }
+
 }

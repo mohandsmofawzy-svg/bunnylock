@@ -53,18 +53,20 @@ class DynamicPlmnService : Service() {
     override fun onCreate() {
         super.onCreate()
         running = true
+        startRequested = false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, false).apply()
+            startRequested = false
             stopMonitoring()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(startId)
             return START_NOT_STICKY
         }
         val prefs = getSharedPreferences(PREFERENCES, MODE_PRIVATE)
-        if (!prefs.getBoolean(KEY_ENABLED, false)) {
+        if (!prefs.getBoolean(KEY_ENABLED, false) || prefs.getBoolean("appExitRequested", false)) {
             stopSelf(startId)
             return START_NOT_STICKY
         }
@@ -292,16 +294,26 @@ class DynamicPlmnService : Service() {
     private fun stopMonitoring() {
         monitorJob?.cancel()
         monitorJob = null
-        modem?.close()
-        modem = null
-        running = false
-        writeStatus(this, state = STATE_STOPPED, error = "")
+        try {
+            modem?.close()
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Could not close the modem controller while stopping Dynamic PLMN", e)
+        } finally {
+            modem = null
+            running = false
+            writeStatus(this, state = STATE_STOPPED, error = "")
+        }
     }
 
     override fun onDestroy() {
         stopMonitoring()
         serviceScope.cancel()
+        val restart = stoppingForExit && restartAfterExit && isEnabled()
+        startRequested = false
+        stoppingForExit = false
+        restartAfterExit = false
         super.onDestroy()
+        if (restart) sync(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -338,6 +350,15 @@ class DynamicPlmnService : Service() {
         @Volatile
         private var running = false
 
+        @Volatile
+        private var startRequested = false
+
+        @Volatile
+        private var stoppingForExit = false
+
+        @Volatile
+        private var restartAfterExit = false
+
         fun isServiceRunning(): Boolean = running
 
         fun status(context: Context): DynamicPlmnStatus {
@@ -347,7 +368,9 @@ class DynamicPlmnService : Service() {
                 enabled = prefs.getBoolean(KEY_ENABLED, false),
                 serviceRunning = runningNow,
                 state =
-                    if (runningNow && !prefs.getBoolean(KEY_ENABLED, false)) {
+                    if (prefs.getBoolean("appExitRequested", false)) {
+                        STATE_STOPPED
+                    } else if (runningNow && !prefs.getBoolean(KEY_ENABLED, false)) {
                         STATE_STOPPING
                     } else if (runningNow) {
                         prefs.getString(KEY_STATE, STATE_STARTING) ?: STATE_STARTING
@@ -372,8 +395,38 @@ class DynamicPlmnService : Service() {
                 .putString(KEY_STATE, STATE_STARTING)
                 .putString(KEY_ERROR, "")
                 .apply()
-            val intent = Intent(appContext, DynamicPlmnService::class.java).setAction(ACTION_START)
-            ContextCompat.startForegroundService(appContext, intent)
+            sync(appContext)
+        }
+
+        fun sync(context: Context) {
+            val appContext = context.applicationContext
+            val prefs = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_ENABLED, false)) return
+            if (prefs.getBoolean("appExitRequested", false)) return
+            if (running || startRequested) {
+                if (stoppingForExit) restartAfterExit = true
+                return
+            }
+            startRequested = true
+            stoppingForExit = false
+            try {
+                val intent = Intent(appContext, DynamicPlmnService::class.java).setAction(ACTION_START)
+                ContextCompat.startForegroundService(appContext, intent)
+            } catch (e: RuntimeException) {
+                startRequested = false
+                throw e
+            }
+        }
+
+        fun stopForExit(context: Context) {
+            val appContext = context.applicationContext
+            stoppingForExit = true
+            restartAfterExit = false
+            startRequested = false
+            val stopped = appContext.stopService(Intent(appContext, DynamicPlmnService::class.java))
+            if (!stopped && !running) stoppingForExit = false
+            writeStatus(appContext, state = STATE_STOPPED, error = "")
+            appContext.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         }
 
         fun stop(context: Context) {

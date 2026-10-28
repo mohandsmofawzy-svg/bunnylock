@@ -189,9 +189,16 @@ object LockNotifier {
 
     /** يعيد بناء إشعار الأقفال من بيانات التفضيلات بعد استعادة النظام. */
     fun restore(context: Context) {
-        val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LINES, null) ?: return
+        val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LINES, null)
+        if (saved == null) {
+            manager(context).cancel(NOTIFICATION_ID)
+            return
+        }
         val lines = JSONArray(saved).let { values -> List(values.length()) { values.getString(it) } }
-        if (lines.isEmpty()) return
+        if (lines.isEmpty()) {
+            manager(context).cancel(NOTIFICATION_ID)
+            return
+        }
         val lockedSince = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("lockedSince", System.currentTimeMillis())
         show(context, lines, lockedSince)
     }

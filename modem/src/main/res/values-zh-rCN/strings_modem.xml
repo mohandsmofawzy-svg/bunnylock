@@ -78,6 +78,7 @@
     <string name="modem_note_mode_airplane">这个基带只能在关闭射频时切换模式，因此短暂开启了飞行模式。</string>
     <string name="modem_note_mode_reapplied">SIM %1$d 仍停留在原来的网络，因此短暂开启飞行模式重新设置了模式。</string>
     <string name="modem_note_mode_stayed">SIM %1$d 仍停留在原来的网络。开关一次飞行模式可能会让模式生效。</string>
+    <string name="modem_note_mode_unverified">无法验证网络类型，因此 bunnylock 没有重试更改网络模式。</string>
     <string name="modem_note_mode_held_back">%1$s模式已保存，情况变化后会完全生效。</string>
     <string name="modem_backend_no_nr_mode">%1$s 后端无法更改 5G 模式。</string>
     <string name="modem_current_backend_no_nr_mode">当前后端无法更改 5G 模式。</string>
