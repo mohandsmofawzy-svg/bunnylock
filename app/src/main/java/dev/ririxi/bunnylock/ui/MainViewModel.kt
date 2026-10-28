@@ -310,7 +310,7 @@ class MainViewModel(
         transform: BandGroupState.(selected: Set<Int>) -> Set<Int>,
     ) {
         val groupState = groupState(group) ?: return
-        val selected = groupState.transform(selectedBands(groupState))
+        val selected = groupState.transform(ui.selectedBands(groupState))
         prefs.edit()
             .putString(LockNotifier.bandTargetPreferenceKey(group.name), selected.sorted().joinToString(","))
             .apply()
