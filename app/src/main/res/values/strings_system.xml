@@ -12,6 +12,26 @@
     <string name="system_notify_toggle_game_mode">Game Mode</string>
     <string name="system_notify_restart_radio">Restart radio</string>
     <string name="system_notify_reboot_modem">Reboot modem</string>
+    <string name="system_notify_fix">Fix</string>
+    <string name="system_fix_fixing">Fixing...</string>
+    <string name="system_fix_connecting">Fixing: connecting to the modem helper...</string>
+    <string name="system_fix_detecting_home">Fixing: detecting the active data SIM and Home PLMN...</string>
+    <string name="system_fix_applying_plmn">Fixing: applying Home PLMN lock...</string>
+    <string name="system_fix_applying_bands">Fixing: applying saved band locks...</string>
+    <string name="system_fix_completed">Fix completed. %1$s Band locks were also confirmed.</string>
+    <string name="system_fix_partial">Partial success. PLMN: %1$s Band locks: %2$s.</string>
+    <string name="system_fix_failed">Fix failed. %1$s</string>
+    <string name="system_fix_start_error">Android did not allow the fix service to start.</string>
+    <string name="system_fix_unknown_error">Unknown error.</string>
+    <string name="system_fix_helper_unavailable">Root or Shizuku modem access is unavailable.</string>
+    <string name="system_fix_active_sim_unavailable">The active data SIM could not be matched to a modem SIM. No lock command was sent.</string>
+    <string name="system_fix_home_unavailable">Home PLMN could not be read for the active data SIM.</string>
+    <string name="system_fix_plmn_confirmed">Home PLMN %1$s is confirmed.</string>
+    <string name="system_fix_plmn_unverified">The Home PLMN lock was requested but could not be verified.</string>
+    <string name="system_fix_plmn_failed">Home PLMN lock failed: %1$s</string>
+    <string name="system_fix_no_band_locks">No saved or currently active band locks were available to reapply.</string>
+    <string name="system_fix_bands_confirmed">%1$d band groups confirmed</string>
+    <string name="system_fix_bands_partial">%1$d of %2$d band groups confirmed</string>
 
     <string name="system_helper_not_running">The helper isn\'t running, so nothing was changed. Reconnecting.</string>
     <string name="system_at_replied">The modem replied. See the output below.</string>

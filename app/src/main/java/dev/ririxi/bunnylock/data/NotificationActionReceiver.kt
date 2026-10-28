@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.modem.ModemController
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import kotlinx.coroutines.CompletableDeferred
@@ -35,6 +36,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
             LockNotifier.ACTION_REBOOT_MODEM -> {
                 Toast.makeText(context, "Rebooting Modem...", Toast.LENGTH_SHORT).show()
                 runModemAction(context, LockNotifier.ACTION_REBOOT_MODEM)
+            }
+            LockNotifier.ACTION_FIX -> {
+                try {
+                    NotificationFixService.start(context)
+                } catch (e: RuntimeException) {
+                    LockNotifier.updateFixStatus(
+                        context,
+                        context.getString(R.string.system_fix_failed, e.message ?: context.getString(R.string.system_fix_start_error)),
+                    )
+                }
             }
         }
     }

@@ -310,7 +310,11 @@ class MainViewModel(
         transform: BandGroupState.(selected: Set<Int>) -> Set<Int>,
     ) {
         val groupState = groupState(group) ?: return
-        updateState { copy(bandSelections = bandSelections + (group to groupState.transform(selectedBands(groupState)))) }
+        val selected = groupState.transform(selectedBands(groupState))
+        prefs.edit()
+            .putString(LockNotifier.bandTargetPreferenceKey(group.name), selected.sorted().joinToString(","))
+            .apply()
+        updateState { copy(bandSelections = bandSelections + (group to selected)) }
     }
 
     fun toggleBand(
@@ -348,9 +352,14 @@ class MainViewModel(
         unlock: Boolean = false,
     ) = launchAction {
         if (unlock) {
-            modem.unlockBands(group)
+            modem.unlockBands(group).also {
+                prefs.edit().remove(LockNotifier.bandTargetPreferenceKey(group.name)).apply()
+            }
         } else {
-            modem.lockBands(group, groupState(group)?.let(ui::selectedBands).orEmpty())
+            val bands = groupState(group)?.let(ui::selectedBands).orEmpty()
+            modem.lockBands(group, bands).also {
+                prefs.edit().putString(LockNotifier.bandTargetPreferenceKey(group.name), bands.sorted().joinToString(",")).apply()
+            }
         }
     }
 
@@ -424,7 +433,14 @@ class MainViewModel(
 
     fun unlockPlmn() = launchAction { modem.unlockPlmn() }
 
-    fun unlockEverything() = launchAction { modem.unlockEverything() }
+    fun unlockEverything() =
+        launchAction {
+            modem.unlockEverything().also {
+                val editor = prefs.edit()
+                Group.entries.forEach { group -> editor.remove(LockNotifier.bandTargetPreferenceKey(group.name)) }
+                editor.apply()
+            }
+        }
 
     fun radioCycle() = launchAction { modem.radioCycle() }
 
@@ -466,7 +482,13 @@ class MainViewModel(
         profile.cell?.let { form -> updateState { copy(form = form) } }
         launchAction {
             profile.bands.forEach { (group, bands) ->
-                if (bands.isEmpty()) modem.unlockBands(group) else modem.lockBands(group, bands)
+                if (bands.isEmpty()) {
+                    modem.unlockBands(group)
+                    prefs.edit().remove(LockNotifier.bandTargetPreferenceKey(group.name)).apply()
+                } else {
+                    modem.lockBands(group, bands)
+                    prefs.edit().putString(LockNotifier.bandTargetPreferenceKey(group.name), bands.sorted().joinToString(",")).apply()
+                }
             }
             if (profile.cell == null) {
                 modem.unlockCells()

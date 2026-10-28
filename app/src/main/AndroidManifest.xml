@@ -68,6 +68,16 @@
                 android:value="User-enabled ongoing cellular PLMN monitoring and recovery" />
         </service>
 
+        <service
+            android:name=".data.NotificationFixService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-initiated network PLMN and band lock repair from the persistent notification" />
+        </service>
+
         <!-- مربعات Quick Settings محمية بإذن النظام ولا تقبل تشغيلًا عاديًا من تطبيق آخر. -->
         <service
             android:name=".system.ToggleLocksTileService"

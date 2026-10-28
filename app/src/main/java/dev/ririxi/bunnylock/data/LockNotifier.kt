@@ -27,6 +27,8 @@ object LockNotifier {
     const val ACTION_RESTART_RADIO = "dev.ririxi.bunnylock.action.RESTART_RADIO"
     /** إجراء إعادة تشغيل المودم من الإشعار أو Quick Settings. */
     const val ACTION_REBOOT_MODEM = "dev.ririxi.bunnylock.action.REBOOT_MODEM"
+    /** إجراء إصلاح الشبكة من الإشعار دون إعادة تشغيل الراديو أو المودم. */
+    const val ACTION_FIX = "dev.ririxi.bunnylock.action.FIX"
     /** إجراء تبديل Game Mode المحفوظ دون إرسال إعداد مباشر إلى المودم. */
     const val ACTION_TOGGLE_GAME_MODE = "dev.ririxi.bunnylock.action.TOGGLE_GAME_MODE"
     // قناة هادئة وإشعار ثابت لتجنب التنبيه المتكرر ما دامت الأقفال فعالة.
@@ -35,6 +37,7 @@ object LockNotifier {
     private const val PREFS = "bunnylock"
     private const val KEY_LINES = "notificationLines"
     private const val KEY_LOCK_ACTIVE = "notificationLockActive"
+    const val PREFERENCES_NAME = PREFS
 
     private fun manager(context: Context) = context.getSystemService(NotificationManager::class.java)
 
@@ -75,15 +78,8 @@ object LockNotifier {
                 Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-        val toggleLocks =
-            PendingIntent.getBroadcast(
-                context,
-                1,
-                Intent(context, NotificationActionReceiver::class.java).setAction(ACTION_TOGGLE_LOCKS),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
         val restartRadio = actionIntent(context, ACTION_RESTART_RADIO, 2)
-        val rebootModem = actionIntent(context, ACTION_REBOOT_MODEM, 3)
+        val fix = fixActionIntent(context)
         val toggleGameMode = actionIntent(context, ACTION_TOGGLE_GAME_MODE, 5)
         val restore =
             PendingIntent.getBroadcast(
@@ -92,26 +88,103 @@ object LockNotifier {
                 Intent(context, NotificationRestoreReceiver::class.java),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-        val notification =
-            Notification
-                .Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_lock)
-                .setContentTitle(context.getString(R.string.system_notify_title))
-                .setContentText(lines.joinToString(context.getString(R.string.system_notify_line_separator)))
-                .setStyle(Notification.BigTextStyle().bigText(lines.joinToString("\n")))
-                .setWhen(lockedSinceMillis)
-                .setShowWhen(true)
-                .setUsesChronometer(true)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(openApp)
-                .setDeleteIntent(restore)
-               // .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_locks), toggleLocks).build())
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_game_mode), toggleGameMode).build())
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_restart_radio), restartRadio).build())
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_reboot_modem), rebootModem).build())
-                .build()
+        val notification = buildNotification(context, lines, lockedSinceMillis, null, openApp, restore, toggleGameMode, restartRadio, fix)
         manager(context).notify(NOTIFICATION_ID, notification)
+    }
+
+    /** يعرض حالة Smart Fix داخل الإشعار الحالي مع الحفاظ على أفعاله ومحتواه الأصلي. */
+    fun updateFixStatus(context: Context, status: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        ensureChannel(context)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val savedLines = prefs.getString(KEY_LINES, null)
+        val lines =
+            savedLines?.let { encoded ->
+                val values = JSONArray(encoded)
+                List(values.length()) { values.getString(it) }
+            } ?: emptyList()
+        val lockedSince = prefs.getLong("lockedSince", System.currentTimeMillis())
+        manager(context).notify(NOTIFICATION_ID, notificationForFix(context, lines, lockedSince, status))
+    }
+
+    /** يعيد الإشعار نفسه كي تستخدمه خدمة الإصلاح الأمامية دون إنشاء إشعار متعارض. */
+    fun notificationForFix(context: Context, status: String): Notification {
+        ensureChannel(context)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val savedLines = prefs.getString(KEY_LINES, null)
+        val lines =
+            savedLines?.let { encoded ->
+                val values = JSONArray(encoded)
+                List(values.length()) { values.getString(it) }
+            } ?: emptyList()
+        return notificationForFix(context, lines, prefs.getLong("lockedSince", System.currentTimeMillis()), status)
+    }
+
+    private fun notificationForFix(
+        context: Context,
+        lines: List<String>,
+        lockedSinceMillis: Long,
+        status: String,
+    ): Notification {
+        val openApp =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val restore =
+            PendingIntent.getBroadcast(
+                context,
+                4,
+                Intent(context, NotificationRestoreReceiver::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val toggleGameMode = actionIntent(context, ACTION_TOGGLE_GAME_MODE, 5)
+        val restartRadio = actionIntent(context, ACTION_RESTART_RADIO, 2)
+        val fix = fixActionIntent(context)
+        return buildNotification(context, lines, lockedSinceMillis, status, openApp, restore, toggleGameMode, restartRadio, fix)
+    }
+
+    private fun buildNotification(
+        context: Context,
+        lines: List<String>,
+        lockedSinceMillis: Long,
+        fixStatus: String?,
+        openApp: PendingIntent,
+        restore: PendingIntent,
+        toggleGameMode: PendingIntent,
+        restartRadio: PendingIntent,
+        fix: PendingIntent,
+    ): Notification {
+        val content = lines.joinToString(context.getString(R.string.system_notify_line_separator))
+        val expandedText = listOfNotNull(fixStatus, lines.takeIf { it.isNotEmpty() }?.joinToString("\n")).joinToString("\n")
+        return Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_lock)
+            .setContentTitle(context.getString(R.string.system_notify_title))
+            .setContentText(fixStatus ?: content)
+            .setStyle(Notification.BigTextStyle().bigText(expandedText.ifBlank { content }))
+            .setWhen(lockedSinceMillis)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(openApp)
+            .setDeleteIntent(restore)
+            .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_toggle_game_mode), toggleGameMode).build())
+            .addAction(Notification.Action.Builder(null, context.getString(R.string.system_notify_restart_radio), restartRadio).build())
+            .addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.ic_menu_manage,
+                    context.getString(R.string.system_notify_fix),
+                    fix,
+                ).build(),
+            )
+            .build()
     }
 
     /** يعيد بناء إشعار الأقفال من بيانات التفضيلات بعد استعادة النظام. */
@@ -149,4 +222,14 @@ object LockNotifier {
             Intent(context, NotificationActionReceiver::class.java).setAction(action),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+
+    private fun fixActionIntent(context: Context) =
+        PendingIntent.getBroadcast(
+            context,
+            6,
+            Intent(context, NotificationActionReceiver::class.java).setAction(ACTION_FIX),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+    fun bandTargetPreferenceKey(groupName: String) = "fixBandSelection.$groupName"
 }
