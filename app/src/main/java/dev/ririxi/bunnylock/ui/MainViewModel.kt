@@ -10,6 +10,7 @@ import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.data.Cell
 import dev.ririxi.bunnylock.data.DynamicPlmnService
+import dev.ririxi.bunnylock.data.GameModeService
 import dev.ririxi.bunnylock.data.LockNotifier
 import dev.ririxi.bunnylock.data.ProfileStore
 import dev.ririxi.bunnylock.data.Rat
@@ -17,6 +18,7 @@ import dev.ririxi.bunnylock.data.Updates
 import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.CellLockRequest
+import dev.ririxi.bunnylock.modem.GameModeOperatingState
 import dev.ririxi.bunnylock.modem.Group
 import dev.ririxi.bunnylock.modem.LockRat
 import dev.ririxi.bunnylock.modem.ModemController
@@ -55,6 +57,7 @@ class MainViewModel(
         if (key == "gameModeEnabled") {
             val enabled = prefs.getBoolean("gameModeEnabled", false)
             modem.setGameModeEnabled(enabled)
+            syncGameModeService(enabled)
             updateState { copy(gameModeEnabled = enabled) }
         }
     }
@@ -74,6 +77,9 @@ class MainViewModel(
         )
 
     private val ui get() = _ui.value
+
+    val gameModeOperatingState: GameModeOperatingState
+        get() = modem.gameModeOperatingState
 
     private inline fun updateState(transform: UiState.() -> UiState) = _ui.update(transform)
 
@@ -98,6 +104,7 @@ class MainViewModel(
         prefs.registerOnSharedPreferenceChangeListener(gameModePreferenceListener)
         prefs.registerOnSharedPreferenceChangeListener(dynamicPlmnPreferenceListener)
         modem.connect()
+        syncGameModeService(prefs.getBoolean("gameModeEnabled", false))
         checkForUpdate()
     }
 
@@ -145,6 +152,7 @@ class MainViewModel(
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
         syncDynamicPlmnStatus()
+        if (ui.gameModeEnabled) syncGameModeService(enabled = true)
         deviceSpoofing.refreshShizukuStatus()
         if (modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
         val locales = app.resources.configuration.locales
@@ -275,6 +283,16 @@ class MainViewModel(
 
     fun setGameModeEnabled(enabled: Boolean) {
         modem.setGameModeEnabled(enabled)
+        syncGameModeService(enabled)
+        updateState { copy(gameModeEnabled = enabled) }
+    }
+
+    private fun syncGameModeService(enabled: Boolean) {
+        try {
+            GameModeService.sync(app, enabled)
+        } catch (e: RuntimeException) {
+            _events.tryEmit(e.message ?: app.getString(R.string.game_mode_notification_start_failed))
+        }
     }
 
     fun setAtNode(node: String) = modem.setAtNode(node)

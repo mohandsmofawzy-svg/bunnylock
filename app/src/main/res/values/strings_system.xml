@@ -1,6 +1,20 @@
 <resources>
     <string name="system_notify_channel_name">Active locks</string>
     <string name="system_notify_channel_description">Shows which bands, cells or networks bunnylock has locked.</string>
+    <string name="game_mode_notification_channel">Game Mode monitoring</string>
+    <string name="game_mode_notification_channel_description">Shows adaptive cellular monitoring while Game Mode is enabled.</string>
+    <string name="game_mode_notification_title">bunnylock: Game Mode active</string>
+    <string name="game_mode_notification_waiting">Monitoring will take over when bunnylock is in the background.</string>
+    <string name="game_mode_notification_monitoring">Adaptive monitoring is active; waiting for a reliable signal sample.</string>
+    <string name="game_mode_notification_stable">Stable Mode: light network monitoring is active.</string>
+    <string name="game_mode_notification_recovery">Recovery Mode: persistent weak signal detected; monitoring is temporarily increased.</string>
+    <string name="game_mode_notification_recovery_monitoring_only">Recovery monitoring only: this modem has no supported automatic recovery action.</string>
+    <string name="game_mode_notification_helper_lost">Root or Shizuku modem access was lost.</string>
+    <string name="game_mode_notification_unavailable">Adaptive monitoring is unavailable: %1$s</string>
+    <string name="game_mode_notification_start_failed">Android did not allow Game Mode monitoring to start.</string>
+    <string name="game_mode_notification_recovery_requested">The modem accepted a re-attach request, but restored service is not verified.</string>
+    <string name="game_mode_notification_recovery_skipped">Automatic re-attach was skipped because a network lock is active or its state is unknown.</string>
+    <string name="game_mode_notification_recovery_failed">Automatic network recovery failed; see diagnostics.</string>
     <string name="system_notify_title">bunnylock: locks active</string>
     <string name="system_notify_line_separator">", "</string>
     <string name="system_notify_line_bands">%1$s: %2$s</string>
@@ -28,6 +42,8 @@
     <string name="system_fix_home_unavailable">Home PLMN could not be read for the active data SIM.</string>
     <string name="system_fix_plmn_confirmed">Home PLMN %1$s is confirmed.</string>
     <string name="system_fix_plmn_unverified">The Home PLMN lock was requested but could not be verified.</string>
+    <string name="system_fix_plmn_unknown">Network selection could not be verified, so no PLMN change was made.</string>
+    <string name="system_fix_plmn_other_lock">PLMN %1$s is already locked. It was left unchanged.</string>
     <string name="system_fix_plmn_failed">Home PLMN lock failed: %1$s</string>
     <string name="system_fix_no_band_locks">No saved or currently active band locks were available to reapply.</string>
     <string name="system_fix_bands_confirmed">%1$d band groups confirmed</string>

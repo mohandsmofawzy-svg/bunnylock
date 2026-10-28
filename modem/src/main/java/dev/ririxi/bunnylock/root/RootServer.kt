@@ -162,12 +162,12 @@ object RootServer {
 
             "qc.reboot" -> Qualcomm.reboot()
 
-            // A failed QMI detach/attach falls back to power-cycling the radio through ITelephony, but only when the subscription is known.
+            // Manual re-attach can fall back to a radio cycle; Game Mode explicitly disables that fallback.
             "qc.reattach" ->
                 try {
                     Qualcomm.reattach(sim)
                 } catch (e: Exception) {
-                    if (subId < 0) throw e
+                    if (!request.optBoolean("allowRadioFallback", true) || subId < 0) throw e
                     Aosp.cycleSubscriberRadio(subId).put("qmiError", e.toTextJson())
                 }
 

@@ -77,13 +77,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.data.Release
+import dev.ririxi.bunnylock.data.GameModeService
 import dev.ririxi.bunnylock.modem.Access
+import dev.ririxi.bunnylock.modem.GameModeOperatingState
+import dev.ririxi.bunnylock.modem.GameModePolicy
 import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.modem.SimInfo
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 private val LIVE_REFRESH_PAUSE = 500.milliseconds
+private val GAME_MODE_STABLE_REFRESH_PAUSE = GameModePolicy.STABLE_MODE_CHECK_INTERVAL_MILLIS.milliseconds
+private val GAME_MODE_RECOVERY_REFRESH_PAUSE = GameModePolicy.RECOVERY_MODE_CHECK_INTERVAL_MILLIS.milliseconds
 
 enum class Tab(
     @StringRes val label: Int,
@@ -101,7 +106,9 @@ enum class Tab(
 fun BunnyApp(vm: MainViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(Tab.HOME) }
-    if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) LiveRefresh(vm)
+    if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) {
+        LiveRefresh(vm, state.gameModeEnabled)
+    }
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
@@ -259,14 +266,32 @@ private fun UpdateDialog(
 }
 
 @Composable
-private fun LiveRefresh(vm: MainViewModel) {
+private fun LiveRefresh(
+    vm: MainViewModel,
+    gameModeEnabled: Boolean,
+) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            while (true) {
-                vm.refreshConnection()
-                delay(LIVE_REFRESH_PAUSE)
+    LaunchedEffect(lifecycle, gameModeEnabled) {
+        try {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                GameModeService.setUiMonitoring(true)
+                try {
+                    while (true) {
+                        vm.refreshConnection()
+                        delay(
+                            when {
+                                !gameModeEnabled -> LIVE_REFRESH_PAUSE
+                                vm.gameModeOperatingState == GameModeOperatingState.RECOVERY -> GAME_MODE_RECOVERY_REFRESH_PAUSE
+                                else -> GAME_MODE_STABLE_REFRESH_PAUSE
+                            },
+                        )
+                    }
+                } finally {
+                    GameModeService.setUiMonitoring(false)
+                }
             }
+        } finally {
+            GameModeService.setUiMonitoring(false)
         }
     }
 }

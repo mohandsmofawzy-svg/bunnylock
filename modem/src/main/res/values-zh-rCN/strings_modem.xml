@@ -41,6 +41,7 @@
     <string name="modem_all_unlocked">已解除全部锁定。</string>
     <string name="modem_radio_restarted">移动网络已重启。</string>
     <string name="modem_reattached">SIM %1$d 已重新附着网络。</string>
+    <string name="modem_reattach_requested">基带已接受 SIM %1$d 重新附着请求；附着状态尚未验证。</string>
     <string name="modem_rebooting">基带正在重启。</string>
     <string name="modem_samsung_menu_opened">已打开三星频段菜单。</string>
 

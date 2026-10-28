@@ -152,16 +152,10 @@ private const val PIXEL_AT_NODE = "/dev/umts_router"
 private val LIVE_CELL_SCAN_WAIT = 1500.milliseconds
 // أقصى انتظار لاستجابة تحديث الخلية أثناء Game Mode؛ لا يعطل تحديثات Android الداخلية.
 private val GAME_MODE_CELL_SCAN_WAIT = 5.seconds
-// الحد الأدنى بين بدء مسحي Game Mode متتاليين لتقليل طلبات التطبيق عند عودة callback سريعًا.
-private val GAME_MODE_CELL_SCAN_INTERVAL = 5.seconds
+// الحد الأدنى بين قراءات الاتصال الكاملة في Game Mode، لا لمسح الخلايا وحده.
+private val GAME_MODE_REFRESH_INTERVAL = 5.seconds
 // يمنع تكرار استعادة الشبكة المؤتمتة بسرعة عند تتابع عينات الإشارة الضعيفة.
 private val AUTOMATED_RECOVERY_COOLDOWN = 45.seconds
-// عتبة RSRP التي تعد الإشارة عندها ضعيفة لأغراض الاستعادة الاختيارية في Game Mode.
-private const val POOR_SIGNAL_RSRP_DBM = -110
-// عتبة SINR التي تعد الإشارة عندها ضعيفة لأغراض الاستعادة الاختيارية في Game Mode.
-private const val POOR_SIGNAL_SINR_DB = -5
-// عدد عينات الإشارة الضعيفة المتعاقبة قبل محاولة إعادة الإرفاق؛ لا يضمن تحسن الشبكة.
-private const val POOR_SIGNAL_SAMPLES_FOR_RECOVERY = 3
 
 /** بادئة تحدد أن أوامر AT تمر عبر ممر RIL الخاص بـ MediaTek بدل منفذ tty. */
 private const val RIL_NODE_PREFIX = "ril:"
@@ -207,10 +201,17 @@ class ModemController(
     companion object {
         // يمنع تداخل أوامر وقراءات المتحكمات المختلفة داخل عملية التطبيق نفسها.
         private val MODEM_OPERATION_MUTEX = Mutex()
+        private val GAME_MODE_POLICY_LOCK = Any()
+        private var sharedGameModePolicy: GameModePolicy? = null
+        @Volatile
+        private var lastGameModeRefreshAt = 0L
         // اسم تفضيلات Bunny Lock التي تحفظ اختيار Game Mode محليًا.
         private const val PREFERENCES_NAME = "bunnylock"
         // مفتاح تفضيلات حالة Game Mode؛ لا يقابل إعدادًا في النظام أو المودم.
         private const val GAME_MODE_ENABLED_KEY = "gameModeEnabled"
+        private const val GAME_MODE_RECOVERY_ATTEMPTED_KEY = "gameModeRecoveryAttempted"
+        private const val AUTOMATIC_SELECTION_MODE = 0
+        private const val INVALID_SELECTION_MODE = -1
 
         /** يقرأ حالة Game Mode المحفوظة لتوجيه معدل المسح ومراقبة الإشارة دون تعديل إعدادات النظام. */
         fun isGameModeEnabled(context: Context): Boolean =
@@ -220,11 +221,18 @@ class ModemController(
 
         /** يحفظ اختيار Game Mode؛ لا يرسل أمرًا للمودم ولا يوقف خدمات Android الداخلية. */
         fun setGameModeEnabled(context: Context, enabled: Boolean) {
-            context.applicationContext
-                .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                .edit()
+            val appContext = context.applicationContext
+            val prefs = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
                 .putBoolean(GAME_MODE_ENABLED_KEY, enabled)
                 .apply()
+            if (!enabled) {
+                lastGameModeRefreshAt = 0L
+                synchronized(GAME_MODE_POLICY_LOCK) { sharedGameModePolicy?.reset() }
+                prefs.edit()
+                    .remove(GAME_MODE_RECOVERY_ATTEMPTED_KEY)
+                    .apply()
+            }
         }
     }
 
@@ -237,10 +245,16 @@ class ModemController(
     val isGameModeEnabled: Boolean
         get() = isGameModeEnabled(context)
 
-    private var poorSignalSamples = 0
     private var automatedRecovery: Job? = null
+    private val gameModePolicy: GameModePolicy
+        get() =
+            synchronized(GAME_MODE_POLICY_LOCK) {
+                sharedGameModePolicy
+                    ?: GameModePolicy(prefs.getBoolean(GAME_MODE_RECOVERY_ATTEMPTED_KEY, false)).also {
+                        sharedGameModePolicy = it
+                    }
+            }
     private val modemOperationMutex get() = MODEM_OPERATION_MUTEX
-    private var lastGameModeCellScanAt = 0L
 
     /** SIMs whose 5G mode went through Samsung's service because QMI refused it, so it is read back from there too. */
     private val samsungNrModeReadbackSims = mutableSetOf<Int>()
@@ -265,6 +279,9 @@ class ModemController(
     val bestObservedSignal: Signal?
         get() = current.signals.maxWithOrNull(compareBy<Signal> { it.rsrp ?: Int.MIN_VALUE }.thenBy { it.sinr ?: Int.MIN_VALUE })
 
+    val gameModeOperatingState: GameModeOperatingState
+        get() = synchronized(GAME_MODE_POLICY_LOCK) { gameModePolicy.state }
+
     // From the last full refresh, reused by the live ones.
     private var backendCells: List<Cell> = emptyList()
     private var backendCarriers: List<Carrier> = emptyList()
@@ -278,15 +295,23 @@ class ModemController(
 
     private var connecting: Job? = null
 
-    /** يوقف عملية المساعد المملوكة للتطبيق عند إنهاء المتحكم؛ لا يوقف خدمات الراديو التابعة للنظام. */
-    fun close() = helper.stop()
+    /** يوقف المهام والمساعد المملوكين لهذا المتحكم؛ لا يوقف خدمات الراديو التابعة للنظام. */
+    fun close() {
+        automatedRecovery?.cancel()
+        automatedRecovery = null
+        connecting?.cancel()
+        helper.stop()
+    }
 
-    /** يحفظ حالة الوضع ويعيد عدادات المراقبة عند الإيقاف؛ لا يلغي أمر إعادة إرفاق بعيدًا ربما وصل للمساعد. */
+    /** يحفظ حالة الوضع ويوقف الاستعادة المنتظرة عند الإيقاف؛ لا يمكن التراجع عن أمر وصل بالفعل إلى المساعد. */
     fun setGameModeEnabled(enabled: Boolean) {
         if (isGameModeEnabled != enabled) setGameModeEnabled(context, enabled)
         if (!enabled) {
-            poorSignalSamples = 0
-            lastGameModeCellScanAt = 0L
+            lastGameModeRefreshAt = 0L
+            synchronized(GAME_MODE_POLICY_LOCK) { sharedGameModePolicy?.reset() }
+            prefs.edit().remove(GAME_MODE_RECOVERY_ATTEMPTED_KEY).apply()
+            automatedRecovery?.cancel()
+            automatedRecovery = null
         }
     }
 
@@ -939,7 +964,7 @@ class ModemController(
                     nrLock = modem.nrLock,
                     legacyCellLock = modem.legacyCellLock,
                     plmnLock = plmnLock,
-                    plmnLockKnown = modem.plmnReported || aospState?.has("selectionMode") == true,
+                    plmnLockKnown = modem.plmnReported || hasKnownHalPlmnSelection(aospState),
                     registeredPlmn = telephony.networkOperator?.takeIf { it.length >= 5 },
                     registeredName = telephony.networkOperatorName?.takeIf { it.isNotBlank() },
                     homePlmn = telephony.simOperator?.takeIf { it.length >= 5 },
@@ -992,7 +1017,8 @@ class ModemController(
             if (!helper.running || current.refreshing || current.root != RootState.Granted) return
             val gameMode = isGameModeEnabled
             val now = SystemClock.elapsedRealtime()
-            if (gameMode && lastGameModeCellScanAt != 0L && now - lastGameModeCellScanAt < GAME_MODE_CELL_SCAN_INTERVAL.inWholeMilliseconds) return
+            if (gameMode && lastGameModeRefreshAt != 0L && now - lastGameModeRefreshAt < GAME_MODE_REFRESH_INTERVAL.inWholeMilliseconds) return
+            if (gameMode) lastGameModeRefreshAt = now
             val sim = current.sim
             val subscriptionId = subId()
             if (current.backend == Backend.QUALCOMM) {
@@ -1003,7 +1029,6 @@ class ModemController(
                 }
             }
             val scanWait = if (gameMode) GAME_MODE_CELL_SCAN_WAIT else LIVE_CELL_SCAN_WAIT
-            if (gameMode) lastGameModeCellScanAt = SystemClock.elapsedRealtime()
             val cells = Cells.merge(backendCells, Cells.scan(context, subscriptionId, scanWait))
             val signals = Carriers.signals(context, subscriptionId)
             val carriers = connectionCarriers(sim, cells, signals)
@@ -1017,34 +1042,86 @@ class ModemController(
 
     /** يجمع عينات الإشارة الضعيفة في Game Mode فقط عند غياب الأقفال؛ لا يستعيد الشبكة إلا بعد العتبة المحددة. */
     private fun monitorSignalForRecovery(signals: List<Signal>) {
-        if (!isGameModeEnabled || current.anyBandLock || current.anyCellLock || current.anyPlmnLock || current.backend != Backend.QUALCOMM) {
-            poorSignalSamples = 0
+        if (!isGameModeEnabled) {
+            synchronized(GAME_MODE_POLICY_LOCK) { sharedGameModePolicy?.reset() }
+            prefs.edit().remove(GAME_MODE_RECOVERY_ATTEMPTED_KEY).apply()
             return
         }
         val best = signals.maxWithOrNull(compareBy<Signal> { it.rsrp ?: Int.MIN_VALUE }.thenBy { it.sinr ?: Int.MIN_VALUE })
-        val poor = best != null && (best.rsrp ?: 0) <= POOR_SIGNAL_RSRP_DBM && (best.sinr == null || best.sinr <= POOR_SIGNAL_SINR_DB)
-        poorSignalSamples = if (poor) poorSignalSamples + 1 else 0
-        if (poorSignalSamples < POOR_SIGNAL_SAMPLES_FOR_RECOVERY || automatedRecovery?.isActive == true) return
-        poorSignalSamples = 0
+        val recoveryAllowed =
+            current.backend == Backend.QUALCOMM &&
+                !current.anyBandLock &&
+                !current.anyCellLock &&
+                !current.anyPlmnLock
+        val observation =
+            synchronized(GAME_MODE_POLICY_LOCK) {
+                gameModePolicy.observe(best?.rsrp, best?.sinr, recoveryAllowed)
+            }
+        if (observation.returnedToStable) {
+            prefs.edit().remove(GAME_MODE_RECOVERY_ATTEMPTED_KEY).apply()
+        }
+        if (!observation.requestRecovery || automatedRecovery?.isActive == true) return
         automatedRecovery = scope.launch { attemptAutomatedSignalRecovery() }
     }
 
     /** يتحقق مجددًا من الوضع والأقفال والمهلة قبل أمر إعادة الإرفاق؛ الأمر الذي وصل للمساعد لا يمكن إلغاؤه رجعيًا. */
     private suspend fun attemptAutomatedSignalRecovery() {
         modemOperationMutex.withLock {
-            if (!isGameModeEnabled || current.anyBandLock || current.anyCellLock || current.anyPlmnLock) return
+            if (!isGameModeEnabled || current.backend != Backend.QUALCOMM) return
+            val best = bestObservedSignal
+            if (!GameModePolicy.isPoorSignal(best?.rsrp, best?.sinr)) return
+            val locksVerifiedAndUnlocked =
+                try {
+                    refreshQualcommLocksForRecovery()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    log("Automatic re-attach skipped because the current lock state could not be read: ${e.message ?: "unknown error"}.")
+                    return
+                }
+            if (!locksVerifiedAndUnlocked) {
+                log("Automatic re-attach skipped because a network lock is active or its state is unknown.")
+                return
+            }
+            if (!isGameModeEnabled) return
             val now = System.currentTimeMillis()
             val previous = prefs.getLong("gameModeLastRecoveryAt", 0L)
+            if (prefs.getBoolean(GAME_MODE_RECOVERY_ATTEMPTED_KEY, false)) return
+            prefs.edit().putBoolean(GAME_MODE_RECOVERY_ATTEMPTED_KEY, true).apply()
             if (previous != 0L && now - previous < AUTOMATED_RECOVERY_COOLDOWN.inWholeMilliseconds) return
             prefs.edit().putLong("gameModeLastRecoveryAt", now).apply()
             runSuspendCatching {
-                val goal = Text(R.string.modem_goal_reattach, current.sim)
-                val success = Text(R.string.modem_reattached, current.sim)
-                logAndLocalize(attempt(goal) { reattachResult() ?: success })
+                if (!isGameModeEnabled) return@runSuspendCatching
+                val note = reattachResult(allowRadioFallback = false)
+                if (note == null) {
+                    log("Automatic re-attach was accepted by the modem; attachment recovery is unverified.")
+                } else {
+                    log(inEnglish(note))
+                }
             }.onFailure { error ->
                 if (error !is CancellationException) log("Automatic signal recovery failed: ${error.message ?: "unknown error"}.")
             }
         }
+    }
+
+    /** Re-reads the modem locks under the shared operation mutex before any automatic network action. */
+    private suspend fun refreshQualcommLocksForRecovery(): Boolean {
+        val aospState = helper.call("aosp.state") { put("subId", subId()) }
+        val modem = loadQualcomm(current.sim, aospState)
+        val plmnLock = if (modem.plmnReported) modem.plmnLock else halPlmnLock(aospState)
+        updateState {
+            copy(
+                groups = modem.groups,
+                lteLock = modem.lteLock,
+                nrLock = modem.nrLock,
+                plmnLock = plmnLock,
+                plmnLockKnown = modem.plmnReported || hasKnownHalPlmnSelection(aospState),
+            )
+        }
+        return current.plmnLockKnown &&
+            !current.anyBandLock &&
+            !current.anyCellLock &&
+            !current.anyPlmnLock
     }
 
     /** يحدد إن كانت الخلية المرصودة خارج قفل النطاق، مستعينًا ببيانات المسح دون استدعاء المودم. */
@@ -1399,6 +1476,12 @@ class ModemController(
     }
 
     /** يستخرج قفل PLMN من قراءة HAL الحالية دون إعادة الاستعلام عن حالة الشبكة. */
+    private fun hasKnownHalPlmnSelection(aospState: JSONObject?): Boolean {
+        val selectionMode = aospState?.optInt("selectionMode", INVALID_SELECTION_MODE) ?: return false
+        return selectionMode == AUTOMATIC_SELECTION_MODE ||
+            selectionMode == TelephonyManager.NETWORK_SELECTION_MODE_MANUAL
+    }
+
     private fun halPlmnLock(aospState: JSONObject?): String? {
         if (aospState?.optInt("selectionMode") != TelephonyManager.NETWORK_SELECTION_MODE_MANUAL) return null
         val manualPlmn = aospState.optString("manualPlmn")
@@ -2076,14 +2159,15 @@ class ModemController(
 
     /** يطلب إعادة إرفاق SIM عبر Qualcomm؛ قد يعيد المساعد النتيجة عبر دورة راديو بديلة. */
     suspend fun reattach() =
-        change(Text(R.string.modem_goal_reattach, current.sim), Text(R.string.modem_reattached, current.sim)) { reattachResult() }
+        change(Text(R.string.modem_goal_reattach, current.sim), Text(R.string.modem_reattach_requested, current.sim)) { reattachResult() }
 
     /** يرسل أمر إعادة الإرفاق ويعيد ملاحظة المسار البديل؛ يستدعيه المسار اليدوي أو استعادة Game Mode بعد التسلسل. */
-    private suspend fun reattachResult(): Text? {
+    private suspend fun reattachResult(allowRadioFallback: Boolean = true): Text? {
         val result =
             helper.call("qc.reattach", 60.seconds) {
                 put("sim", current.sim)
                 put("subId", subId())
+                put("allowRadioFallback", allowRadioFallback)
             }
         if (result.optString("method") != "radio") return null
         val qmiError = result.optText("qmiError") ?: Text(R.string.something_went_wrong)

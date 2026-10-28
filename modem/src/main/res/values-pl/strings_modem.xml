@@ -41,6 +41,7 @@
     <string name="modem_all_unlocked">Wszystkie blokady zdjęte.</string>
     <string name="modem_radio_restarted">Radio zrestartowane.</string>
     <string name="modem_reattached">SIM %1$d jest znowu podłączona do sieci.</string>
+    <string name="modem_reattach_requested">Modem przyjął ponowne dołączenie SIM %1$d; stan połączenia nie został zweryfikowany.</string>
     <string name="modem_rebooting">Modem uruchamia się ponownie.</string>
     <string name="modem_samsung_menu_opened">Otwarto menu pasm Samsunga.</string>
 

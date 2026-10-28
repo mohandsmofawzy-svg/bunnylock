@@ -41,6 +41,7 @@
     <string name="modem_all_unlocked">Everything is unlocked.</string>
     <string name="modem_radio_restarted">Radio restarted.</string>
     <string name="modem_reattached">SIM %1$d is attached again.</string>
+    <string name="modem_reattach_requested">Re-attach was accepted for SIM %1$d; attachment state is not verified.</string>
     <string name="modem_rebooting">Modem is rebooting.</string>
     <string name="modem_samsung_menu_opened">Opened the Samsung band menu.</string>
 

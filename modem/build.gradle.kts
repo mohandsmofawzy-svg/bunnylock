@@ -35,4 +35,5 @@ dependencies {
     // coroutines جزء من واجهة الوحدة العامة، أما annotation فتستخدم لتعريف قيود Android API.
     api(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.annotation)
+    testImplementation(libs.junit)
 }

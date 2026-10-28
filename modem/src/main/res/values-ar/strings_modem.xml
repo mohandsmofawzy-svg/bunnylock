@@ -38,6 +38,7 @@
     <string name="modem_all_unlocked">أُلغيَت جميع الأقفال.</string>
     <string name="modem_radio_restarted">أُعيد تشغيل الراديو.</string>
     <string name="modem_reattached">أُعيد تسجيل الشريحة %1$d.</string>
+    <string name="modem_reattach_requested">قُبل طلب إعادة تسجيل الشريحة %1$d؛ ولم يتم التحقق من حالة التسجيل.</string>
     <string name="modem_rebooting">جارٍ إعادة تشغيل المودم.</string>
     <string name="modem_samsung_menu_opened">فُتحت قائمة نطاقات Samsung.</string>
     <string name="modem_note_radio_restarted">أُعيد تشغيل الراديو لتطبيق التغيير.</string>

@@ -1,6 +1,20 @@
 <resources>
     <string name="system_notify_channel_name">الأقفال النشطة</string>
     <string name="system_notify_channel_description">يعرض النطاقات والخلايا والشبكات التي قفلها bunnylock.</string>
+    <string name="game_mode_notification_channel">مراقبة وضع اللعب</string>
+    <string name="game_mode_notification_channel_description">يعرض المراقبة الخلوية التكيفية أثناء تفعيل وضع اللعب.</string>
+    <string name="game_mode_notification_title">bunnylock: وضع اللعب مفعّل</string>
+    <string name="game_mode_notification_waiting">ستبدأ المراقبة عند انتقال bunnylock إلى الخلفية.</string>
+    <string name="game_mode_notification_monitoring">المراقبة التكيفية نشطة؛ بانتظار عينة إشارة موثوقة.</string>
+    <string name="game_mode_notification_stable">وضع الاستقرار: مراقبة خفيفة للشبكة.</string>
+    <string name="game_mode_notification_recovery">وضع الاستعادة: رُصد ضعف مستمر في الإشارة؛ زادت المراقبة مؤقتًا.</string>
+    <string name="game_mode_notification_recovery_monitoring_only">مراقبة الاستعادة فقط: لا يتوفر لهذا المودم إجراء استعادة تلقائي مدعوم.</string>
+    <string name="game_mode_notification_helper_lost">فُقد الوصول إلى المودم عبر Root أو Shizuku.</string>
+    <string name="game_mode_notification_unavailable">المراقبة التكيفية غير متاحة: %1$s</string>
+    <string name="game_mode_notification_start_failed">لم يسمح Android ببدء مراقبة وضع اللعب.</string>
+    <string name="game_mode_notification_recovery_requested">قبل المودم طلب إعادة التسجيل، لكن لم يتم التحقق من استعادة الخدمة.</string>
+    <string name="game_mode_notification_recovery_skipped">تم تخطي إعادة التسجيل التلقائية لوجود قفل شبكة أو تعذر التحقق من حالته.</string>
+    <string name="game_mode_notification_recovery_failed">فشلت استعادة الشبكة تلقائيًا؛ راجع التشخيصات.</string>
     <string name="system_notify_title">bunnylock: الأقفال نشطة</string>
     <string name="system_notify_line_separator">، </string>
     <string name="system_notify_line_bands">%1$s: %2$s</string>
@@ -27,6 +41,8 @@
     <string name="system_fix_home_unavailable">تعذرت قراءة PLMN المنزلي لشريحة البيانات النشطة.</string>
     <string name="system_fix_plmn_confirmed">تم تأكيد PLMN المنزلي %1$s.</string>
     <string name="system_fix_plmn_unverified">طُلب قفل PLMN المنزلي لكن تعذر التحقق منه.</string>
+    <string name="system_fix_plmn_unknown">تعذر التحقق من اختيار الشبكة، لذلك لم يتغير PLMN.</string>
+    <string name="system_fix_plmn_other_lock">PLMN ‏%1$s مقفل بالفعل. تُرك دون تغيير.</string>
     <string name="system_fix_plmn_failed">فشل قفل PLMN المنزلي: %1$s</string>
     <string name="system_fix_no_band_locks">لا توجد أقفال نطاقات محفوظة أو نشطة لإعادة تطبيقها.</string>
     <string name="system_fix_bands_confirmed">تم تأكيد %1$d من مجموعات النطاقات</string>

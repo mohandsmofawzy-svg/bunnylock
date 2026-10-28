@@ -49,8 +49,6 @@ class DynamicPlmnService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var monitorJob: Job? = null
     private var modem: ModemController? = null
-    private var lockAttemptTarget: String? = null
-    private var lockAttempts = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -212,10 +210,15 @@ class DynamicPlmnService : Service() {
             ?: observed.homePlmn?.takeIf { it.matches(Regex("\\d{5,6}")) }
             ?: throw IllegalStateException(getString(R.string.dynamic_plmn_home_unknown))
         val target = "$activeDataSubId:$homePlmn"
-        if (lockAttemptTarget != target) {
-            lockAttemptTarget = target
-            lockAttempts = 0
+        val attemptPrefs = getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+        val savedTarget = attemptPrefs.getString(KEY_LOCK_ATTEMPT_TARGET, null)
+        if (savedTarget != target) {
+            attemptPrefs.edit()
+                .putString(KEY_LOCK_ATTEMPT_TARGET, target)
+                .putInt(KEY_LOCK_ATTEMPTS, 0)
+                .apply()
         }
+        var lockAttempts = attemptPrefs.getInt(KEY_LOCK_ATTEMPTS, 0)
         val simName = sim.name
         writeStatus(
             this,
@@ -230,7 +233,7 @@ class DynamicPlmnService : Service() {
         }
         val lockDigits = observed.plmnLock?.filter(Char::isDigit)
         if (lockDigits == homePlmn) {
-            lockAttempts = 0
+            attemptPrefs.edit().putInt(KEY_LOCK_ATTEMPTS, 0).apply()
             val result = getString(R.string.dynamic_plmn_confirmed, formatPlmn(homePlmn))
             writeStatus(this, state = STATE_RUNNING, result = result, error = "", lastCheckAt = System.currentTimeMillis())
             updateNotification(result)
@@ -245,6 +248,7 @@ class DynamicPlmnService : Service() {
 
         writeStatus(this, state = STATE_RETRYING, result = getString(R.string.dynamic_plmn_applying), error = "")
         lockAttempts++
+        attemptPrefs.edit().putInt(KEY_LOCK_ATTEMPTS, lockAttempts).apply()
         controller.lockPlmn(homePlmn.take(3), homePlmn.drop(3))
         controller.refreshNow()
         val verified = controller.state.value
@@ -256,7 +260,7 @@ class DynamicPlmnService : Service() {
                 else -> getString(R.string.dynamic_plmn_unconfirmed)
             }
         if (verified.plmnLockKnown && verified.plmnLock?.filter(Char::isDigit) == homePlmn) {
-            lockAttempts = 0
+            attemptPrefs.edit().putInt(KEY_LOCK_ATTEMPTS, 0).apply()
             writeStatus(this, state = STATE_RUNNING, result = result, error = "", lastCheckAt = System.currentTimeMillis())
         } else {
             throw IllegalStateException(result)
@@ -322,6 +326,8 @@ class DynamicPlmnService : Service() {
         private const val KEY_HOME_PLMN = "dynamicPlmnHome"
         private const val KEY_RESULT = "dynamicPlmnResult"
         private const val KEY_ERROR = "dynamicPlmnError"
+        private const val KEY_LOCK_ATTEMPT_TARGET = "dynamicPlmnLockAttemptTarget"
+        private const val KEY_LOCK_ATTEMPTS = "dynamicPlmnLockAttempts"
         private const val CHANNEL_ID = "dynamic_plmn_service"
         private const val NOTIFICATION_ID = 24
         private const val CHECK_INTERVAL_MILLIS = 60_000L

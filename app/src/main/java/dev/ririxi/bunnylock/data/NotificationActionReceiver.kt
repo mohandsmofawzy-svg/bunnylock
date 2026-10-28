@@ -3,6 +3,7 @@ package dev.ririxi.bunnylock.data
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.modem.ModemController
@@ -26,6 +27,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
             LockNotifier.ACTION_TOGGLE_GAME_MODE -> {
                 val currentMode = ModemController.isGameModeEnabled(context)
                 ModemController.setGameModeEnabled(context, !currentMode)
+                try {
+                    GameModeService.sync(context, enabled = !currentMode)
+                } catch (e: RuntimeException) {
+                    Log.e(TAG, "Could not update Game Mode monitoring", e)
+                    Toast.makeText(context, context.getString(R.string.game_mode_notification_start_failed), Toast.LENGTH_LONG).show()
+                    return
+                }
                 val statusText = if (!currentMode) "Game Mode Enabled" else "Game Mode Disabled"
                 Toast.makeText(context, statusText, Toast.LENGTH_SHORT).show()
             }
@@ -71,8 +79,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     LockNotifier.ACTION_RESTART_RADIO -> modem.radioCycle()
                     LockNotifier.ACTION_REBOOT_MODEM -> modem.rebootModem()
                 }
-            } catch (_: Exception) {
-                // Notification actions have no foreground UI for reporting an error.
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not complete notification modem action", e)
             } finally {
                 modem?.close()
                 scope.cancel()
@@ -84,5 +92,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
     private companion object {
         // حد انتظار إنشاء اتصال المساعد قبل التخلي عن إجراء الإشعار.
         const val CONNECT_TIMEOUT_MILLIS = 90_000L
+        const val TAG = "BunnyLockAction"
     }
 }

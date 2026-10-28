@@ -12,6 +12,7 @@ shizuku = "13.1.5"
 # coroutines متاحة لوحدة modem وتستخدم لتنظيم استدعاءات المساعد والواجهة.
 coroutines = "1.9.0"
 annotation = "1.10.0"
+junit = "4.13.2"
 
 [libraries]
 # AndroidX الأساسية ونقطة تشغيل Compose ودعم ViewModel وLifecycle.
@@ -31,6 +32,7 @@ shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 # annotations لواجهات وحدة modem، وcoroutines-android لتنفيذ النداءات غير المتزامنة.
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
+junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 
 [plugins]

@@ -127,9 +127,13 @@ class NotificationFixService : Service() {
                     ?: throw IllegalStateException(getString(R.string.system_fix_home_unavailable))
                 val current = controller.state.value
                 val currentLock = current.plmnLock?.filter(Char::isDigit)
-                if (current.plmnLockKnown && currentLock == homePlmn) {
+                if (!current.plmnLockKnown) {
+                    plmnMessage = getString(R.string.system_fix_plmn_unknown)
+                } else if (currentLock == homePlmn) {
                     plmnSuccess = true
                     plmnMessage = getString(R.string.system_fix_plmn_confirmed, formatPlmn(homePlmn))
+                } else if (currentLock != null) {
+                    plmnMessage = getString(R.string.system_fix_plmn_other_lock, formatPlmn(currentLock))
                 } else {
                     LockNotifier.updateFixStatus(this, getString(R.string.system_fix_applying_plmn))
                     controller.lockPlmn(homePlmn.take(3), homePlmn.drop(3))
@@ -181,6 +185,7 @@ class NotificationFixService : Service() {
 
         return targets.map { (state, bands) ->
             if (bands.isEmpty()) return@map state.group to false
+            if (state.current == bands) return@map state.group to true
             try {
                 controller.lockBands(state.group, bands)
                 controller.refreshNow()
