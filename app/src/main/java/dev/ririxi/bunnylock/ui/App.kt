@@ -130,17 +130,25 @@ fun BunnyApp(vm: MainViewModel) {
                 subtitle = { Text(topBarSubtitle(state)) },
                 actions = {
                     if (state.modem.sims.size > 1) {
-                        SimChip(state.modem.sims, state.modem.sim, enabled = !state.busy, onSelect = vm::setSim)
+                        SimChip(
+                            state.modem.sims,
+                            state.modem.sim,
+                            enabled = !state.busy,
+                            onSelect = vm::setSim,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
                     }
-                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                        when {
-                            state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
-                                LoadingIndicator(Modifier.size(36.dp))
-                            }
+                    if (state.modem.root !is RootState.Denied) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            when {
+                                state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
+                                    LoadingIndicator(Modifier.size(36.dp))
+                                }
 
-                            state.modem.root == RootState.Granted -> {
-                                IconButton(onClick = vm::refresh) {
-                                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.shell_refresh))
+                                state.modem.root == RootState.Granted -> {
+                                    IconButton(onClick = vm::refresh) {
+                                        Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.shell_refresh))
+                                    }
                                 }
                             }
                         }
@@ -338,11 +346,12 @@ private fun SimChip(
     selected: Int,
     enabled: Boolean,
     onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val current = sims.firstOrNull { it.slot + 1 == selected } ?: return
     val chipDescription = stringResource(R.string.shell_sim_chip_description, selected, current.name)
-    Box {
+    Box(modifier) {
         FilledTonalButton(
             onClick = { expanded = true },
             enabled = enabled,
