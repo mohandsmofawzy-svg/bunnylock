@@ -17,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -139,7 +140,7 @@ internal class WatchdogEngine(
             Watchdog.mutable.value.copy(running = true, starting = false, error = null)
         Watchdog.appendLog("${now()}  Watchdog started (observe only).")
         try {
-            while (isActive) {
+            while (currentCoroutineContext().isActive) {
                 val sample =
                     try {
                         sampleOnce()
