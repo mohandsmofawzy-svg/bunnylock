@@ -21,6 +21,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -154,6 +156,7 @@ class ShizukuClient(
                 }
             }
         } catch (_: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
             throw RootException(context, Text(R.string.system_shizuku_prompt_unanswered))
         }
     }
@@ -193,6 +196,7 @@ class ShizukuClient(
                 }
             }
         } catch (_: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
             throw RootException(context, Text(R.string.system_shizuku_service_start_timeout))
         }
 
@@ -213,6 +217,7 @@ class ShizukuClient(
             try {
                 JSONObject(withTimeout(timeout) { reply.await() })
             } catch (_: TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
                 throw RootException(context, Text(R.string.system_shizuku_service_timeout))
             } catch (_: RemoteException) {
                 throw RootException(context, Text(R.string.system_shizuku_service_died))

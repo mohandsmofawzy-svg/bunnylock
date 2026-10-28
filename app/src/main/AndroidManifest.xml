@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- تستخدم الإشعارات للإبلاغ عن الأقفال، ويحتاج فحص التحديثات إلى الإنترنت. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- التطبيق مخصص للأجهزة الهاتفية التي توفر واجهات Telephony. -->
     <uses-feature android:name="android.hardware.telephony" android:required="true" />
 
     <queries>
@@ -19,6 +21,7 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.Bunnylock">
+        <!-- نقطة دخول الواجهة؛ singleTop يمرر إجراءات الإشعار عبر onNewIntent. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,6 +32,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- يعيد الإشعارات بعد إعادة التشغيل ويستقبل أوامرها الداخلية غير المصدرة. -->
         <receiver
             android:name=".data.NotificationRestoreReceiver"
             android:exported="false" />
@@ -37,6 +41,7 @@
             android:name=".data.NotificationActionReceiver"
             android:exported="false" />
 
+        <!-- مربعات Quick Settings محمية بإذن النظام ولا تقبل تشغيلًا عاديًا من تطبيق آخر. -->
         <service
             android:name=".system.ToggleLocksTileService"
             android:exported="true"

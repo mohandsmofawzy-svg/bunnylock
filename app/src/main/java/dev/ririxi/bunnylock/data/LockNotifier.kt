@@ -19,11 +19,17 @@ import dev.ririxi.bunnylock.system.ToggleLocksTileService
 import org.json.JSONArray
 
 object LockNotifier {
+    /** إجراء فتح كل الأقفال الذي يمكن أن تستقبله Activity. */
     const val ACTION_UNLOCK_ALL = "dev.ririxi.bunnylock.action.UNLOCK_ALL"
+    /** إجراء تبديل الأقفال من أدوات النظام؛ قد يبقى غير معروض إذا عُطل زر الإشعار. */
     const val ACTION_TOGGLE_LOCKS = "dev.ririxi.bunnylock.action.TOGGLE_LOCKS"
+    /** إجراء إعادة تشغيل الراديو من الإشعار أو Quick Settings. */
     const val ACTION_RESTART_RADIO = "dev.ririxi.bunnylock.action.RESTART_RADIO"
+    /** إجراء إعادة تشغيل المودم من الإشعار أو Quick Settings. */
     const val ACTION_REBOOT_MODEM = "dev.ririxi.bunnylock.action.REBOOT_MODEM"
+    /** إجراء تبديل Game Mode المحفوظ دون إرسال إعداد مباشر إلى المودم. */
     const val ACTION_TOGGLE_GAME_MODE = "dev.ririxi.bunnylock.action.TOGGLE_GAME_MODE"
+    // قناة هادئة وإشعار ثابت لتجنب التنبيه المتكرر ما دامت الأقفال فعالة.
     private const val CHANNEL_ID = "active_locks_silent_v2"
     private const val NOTIFICATION_ID = 1
     private const val PREFS = "bunnylock"
@@ -45,6 +51,7 @@ object LockNotifier {
         manager(context).createNotificationChannel(channel)
     }
 
+    /** يحدث إشعار الأقفال ومربعات Quick Settings؛ يفشل العرض بأمان إذا لم يمنح المستخدم إذن الإشعارات. */
     fun show(
         context: Context,
         lines: List<String>,
@@ -107,6 +114,7 @@ object LockNotifier {
         manager(context).notify(NOTIFICATION_ID, notification)
     }
 
+    /** يعيد بناء إشعار الأقفال من بيانات التفضيلات بعد استعادة النظام. */
     fun restore(context: Context) {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LINES, null) ?: return
         val lines = JSONArray(saved).let { values -> List(values.length()) { values.getString(it) } }
@@ -115,6 +123,7 @@ object LockNotifier {
         show(context, lines, lockedSince)
     }
 
+    /** يمسح حالة الإشعار المحفوظة ويطلب تحديث البلاطات بعد زوال الأقفال. */
     fun cancel(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .remove(KEY_LINES)
@@ -124,6 +133,7 @@ object LockNotifier {
         manager(context).cancel(NOTIFICATION_ID)
     }
 
+    /** يقرأ حالة الأقفال المحفوظة لتحديد حالة البلاطات دون استعلام المودم. */
     fun locksActive(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_LOCK_ACTIVE, false)
 

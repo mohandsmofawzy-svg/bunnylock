@@ -51,8 +51,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -227,7 +225,6 @@ private fun GameModeButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
     val pulse = remember { Animatable(1f) }
     LaunchedEffect(enabled) {
         if (!enabled) {
@@ -262,21 +259,21 @@ private fun GameModeButton(
                 .toggleable(
                     value = enabled,
                     role = Role.Switch,
-                    onValueChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onClick()
-                    },
+                    onValueChange = { onClick() },
                 )
                 .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(stringResource(R.string.home_game_mode), style = MaterialTheme.typography.titleMediumEmphasized)
-        Text(
-            stateLabel,
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BunnyMark(Modifier.size(width = 12.dp, height = 16.dp))
+            Text(
+                stateLabel,
+                style = MaterialTheme.typography.labelLargeEmphasized,
+                color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

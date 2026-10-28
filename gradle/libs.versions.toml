@@ -1,28 +1,35 @@
 [versions]
+# إصدارات Android Gradle Plugin ومترجم Kotlin المستخدمين في بناء الوحدات.
 agp = "9.4.1"
 kotlin = "2.4.21"
+# إصدارات Compose وواجهات AndroidX المرتبطة بالواجهة ودورة حياتها.
 composeBom = "2026.09.00"
 material3 = "1.5.0-beta01"
 activityCompose = "1.13.0"
 coreKtx = "1.19.1"
 lifecycle = "2.11.0"
 shizuku = "13.1.5"
+# coroutines متاحة لوحدة modem وتستخدم لتنظيم استدعاءات المساعد والواجهة.
 coroutines = "1.9.0"
 annotation = "1.10.0"
 
 [libraries]
+# AndroidX الأساسية ونقطة تشغيل Compose ودعم ViewModel وLifecycle.
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+# BOM يوحد إصدارات Compose؛ وحدات Compose التالية لا تعرّف إصدارات مستقلة.
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+# واجهة Shizuku لبدء الخدمات والتحقق من الإذن؛ يستخدمها التطبيق لاكتساب وصول مساعد.
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+# annotations لواجهات وحدة modem، وcoroutines-android لتنفيذ النداءات غير المتزامنة.
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 

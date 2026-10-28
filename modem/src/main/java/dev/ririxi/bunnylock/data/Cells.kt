@@ -80,6 +80,7 @@ object Cells {
             .thenByDescending { it.rat.ordinal }
             .thenByDescending { it.rsrp ?: -200 }
 
+    /** يطلب قائمة خلايا حديثة للشريحة؛ [freshWait] حد انتظار callback وبعده يستخدم آخر نتيجة أو cache النظام. */
     @SuppressLint("MissingPermission")
     suspend fun scan(
         context: Context,
@@ -97,6 +98,7 @@ object Cells {
 
     private val lastCellInfo = ConcurrentHashMap<Int, List<CellInfo>>()
 
+    /** يربط callback غير المتزامن بـ Coroutine؛ إلغاء الانتظار لا يوقف مسح Android الداخلي الجاري. */
     @SuppressLint("MissingPermission")
     private suspend fun freshCellInfo(telephony: TelephonyManager): List<CellInfo>? =
         suspendCancellableCoroutine { cont ->

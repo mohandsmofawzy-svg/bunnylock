@@ -19,5 +19,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "bunnylock"
+// التطبيق يملك الواجهة، ووحدة modem تعزل طبقة التحكم بالمودم والمساعد ذي الصلاحيات.
 include(":app")
 include(":modem")

@@ -14,7 +14,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
+/** ينفذ إجراءات الإشعار؛ العمليات غير المتزامنة تستخدم goAsync ثم تنهي النتيجة وتغلق مواردها. */
 class NotificationActionReceiver : BroadcastReceiver() {
+    /** يوجه الإجراء إلى تغيير تفضيل محلي أو عملية مودم قصيرة خارج دورة حياة Activity. */
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             LockNotifier.ACTION_TOGGLE_LOCKS -> {
@@ -37,6 +39,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
+    /** ينفذ أمرًا يحتاج اتصال المساعد مع مهلة محدودة ويضمن إيقاف المساعد والنطاق عند الانتهاء. */
     private fun runModemAction(context: Context, action: String) {
         val pendingResult = goAsync()
         val appContext = context.applicationContext
@@ -68,6 +71,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     private companion object {
+        // حد انتظار إنشاء اتصال المساعد قبل التخلي عن إجراء الإشعار.
         const val CONNECT_TIMEOUT_MILLIS = 90_000L
     }
 }

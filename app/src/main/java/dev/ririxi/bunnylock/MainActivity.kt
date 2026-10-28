@@ -17,19 +17,23 @@ import dev.ririxi.bunnylock.ui.BunnyApp
 import dev.ririxi.bunnylock.ui.MainViewModel
 import dev.ririxi.bunnylock.ui.theme.BunnyTheme
 
+/** نقطة دخول واجهة التطبيق؛ تدير طلب الصلاحيات وتربط العرض بـ ViewModel. */
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
 
+    /** بعد نتيجة الإذن يعيد تحميل SIM وطلب قراءة حديثة بدل افتراض أن الصلاحيات مُنحت. */
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             vm.loadSims()
             vm.refresh()
         }
 
+    /** يطبق لغة التطبيق على Context قبل إنشاء موارد الواجهة. */
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguage.wrap(newBase))
     }
 
+    /** يهيئ حواف النظام ويطلب الصلاحيات مرة عند إنشاء Activity جديدة. */
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
@@ -54,17 +58,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** يعيد فحص منح Shizuku وتغير اللغة عند عودة المستخدم إلى التطبيق. */
     override fun onResume() {
         super.onResume()
         vm.resumed()
     }
 
+    /** يعالج إجراءات الإشعار التي تصل إلى Activity ذات وضع singleTop. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationAction(intent)
     }
 
+    /** يمرر الإجراء المعروف إلى ViewModel؛ التحقق والتنفيذ الفعليان في طبقة التطبيق. */
     private fun handleNotificationAction(intent: Intent?) {
         vm.handleSystemAction(intent?.action)
     }

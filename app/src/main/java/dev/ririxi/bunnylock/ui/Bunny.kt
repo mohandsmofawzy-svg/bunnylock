@@ -129,6 +129,11 @@ private fun BunnyLock(
     }
 }
 
+@Composable
+fun BunnyMark(modifier: Modifier = Modifier) {
+    BunnyLock(BunnyPose.UPRIGHT, modifier)
+}
+
 private class HopPose(
     val lift: Float = 0f,
     val squash: Float = 0f,

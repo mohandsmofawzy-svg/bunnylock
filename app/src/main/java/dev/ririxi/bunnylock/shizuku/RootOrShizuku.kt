@@ -12,10 +12,12 @@ import dev.ririxi.bunnylock.modem.StartedHelper
 import dev.ririxi.bunnylock.modem.Text
 import kotlinx.coroutines.CancellationException
 
+/** يختار Root أولًا ثم Shizuku كبديل، ويعيد وصفًا واضحًا عند غياب المساعد أو رفض الإذن. */
 class RootOrShizuku(
     private val context: Context,
     private val onShizukuLost: () -> Unit,
 ) : HelperStarter {
+    /** يبدأ العميل المتاح ويحافظ على إلغاء Coroutine كي لا يترك خدمة Shizuku مرتبطة عند فشل البدء. */
     override suspend fun start(showStep: (String) -> Unit): StartedHelper {
         showStep(context.getString(R.string.system_shizuku_step_root))
         val rootClient = RootClient(context)

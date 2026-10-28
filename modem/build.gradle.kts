@@ -4,7 +4,9 @@ plugins {
 
 android {
     namespace = "dev.ririxi.bunnylock.modem"
+    // يجب أن يتوافق هذا مع compileSdk الخاص بالتطبيق عند دمج الوحدة.
     compileSdk = 37
+    // إصدار NDK المستخدم لبناء مكتبة QRTR الأصلية المضمنة مع المساعد.
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
@@ -21,6 +23,7 @@ android {
     }
 
     externalNativeBuild {
+        // CMake يبني مكتبة QRTR فقط؛ بقية تنفيذ المودم مكتوب بـ Kotlin.
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
@@ -29,6 +32,7 @@ android {
 }
 
 dependencies {
+    // coroutines جزء من واجهة الوحدة العامة، أما annotation فتستخدم لتعريف قيود Android API.
     api(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.annotation)
 }

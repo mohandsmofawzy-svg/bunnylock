@@ -1,3 +1,4 @@
+# يبني مكتبة QRTR المشتركة التي يحملها RootServer للوصول إلى واجهة Qualcomm.
 cmake_minimum_required(VERSION 3.22)
 project(bunnyqrtr C)
 

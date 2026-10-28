@@ -11,6 +11,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
@@ -23,10 +25,7 @@ import kotlin.concurrent.thread
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Runs RootServer in app_process inside a shell and talks JSON to it.
- * Every request carries an id, and the reader thread hands each reply to the call that waits for that id.
- */
+/** يشغل RootServer داخل app_process ويتبادل JSON معه؛ تطابق معرفات الطلب الردود مع Coroutine المنتظرة. */
 abstract class HelperClient(
     private val context: Context,
     private val name: Text,
@@ -46,6 +45,7 @@ abstract class HelperClient(
 
     protected open fun exited() {}
 
+    /** يبدأ العملية ويهيئ قارئ الردود؛ مهلة بدء التشغيل أو إلغاءه ينهي العملية المنشأة. */
     override suspend fun start(): JSONObject =
         withContext(Dispatchers.IO) {
             stop()
@@ -72,6 +72,7 @@ abstract class HelperClient(
                     withTimeout(20.seconds) { ready.await() }
                 } catch (_: TimeoutCancellationException) {
                     shell.destroy()
+                    currentCoroutineContext().ensureActive()
                     throw RootException(context, startTimedOut)
                 } catch (e: CancellationException) {
                     shell.destroy()
@@ -85,11 +86,7 @@ abstract class HelperClient(
             hello
         }
 
-    /**
-     * Reads the helper's output for as long as it lives: the hello line completes [ready], every other line
-     * answers the pending call with the same id. The helper's stdout closing is how its death is noticed,
-     * and everything still waiting then fails.
-     */
+    /** يقرأ ردود المساعد حتى موته، ويربط كل رد بالطلب الموافق ويفشل المنتظرين عند إغلاق القناة. */
     private fun startReplyReader(
         helperStdout: BufferedReader,
         ready: CompletableDeferred<JSONObject>,
@@ -116,6 +113,7 @@ abstract class HelperClient(
         }
     }
 
+    /** يرسل طلب JSON بمعرف مستقل وينتظر الرد حتى المهلة؛ إلغاء الانتظار لا يضمن إيقاف أمر بدأ داخل المساعد. */
     override suspend fun call(
         cmd: String,
         timeout: Duration,
@@ -138,6 +136,7 @@ abstract class HelperClient(
                 }
                 withTimeout(timeout) { reply.await() }
             } catch (_: TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
                 throw RootException(context, Text(R.string.modem_helper_no_answer, name))
             } catch (_: IOException) {
                 // The pipe to a helper that has died breaks on the write.
@@ -149,6 +148,7 @@ abstract class HelperClient(
         return response.optJSONObject("data") ?: JSONObject()
     }
 
+    /** يرسل أمر خروج ثم ينهي العملية المحلية، ولا يوقف خدمات Android أو الراديو نفسه. */
     override fun stop() {
         // A helper that is already gone can't take the exit command. Destroying the process covers that case.
         runCatching {

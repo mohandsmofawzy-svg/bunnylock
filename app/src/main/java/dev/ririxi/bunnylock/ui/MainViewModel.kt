@@ -43,6 +43,7 @@ import java.util.UUID
 
 private const val MAX_TOOL_OUTPUT_CHARS = 8000
 
+/** ينسق حالة الواجهة مع ModemController ضمن نطاق ViewModel قابل للإلغاء عند إنهاء الشاشة. */
 class MainViewModel(
     private val app: Application,
 ) : AndroidViewModel(app) {
@@ -120,6 +121,7 @@ class MainViewModel(
         if (enabled) checkForUpdate() else dismissUpdate()
     }
 
+    /** يفك مستمع التفضيلات وShizuku ويوقف المساعد قبل انتهاء نطاق ViewModel. */
     override fun onCleared() {
         prefs.unregisterOnSharedPreferenceChangeListener(gameModePreferenceListener)
         stopWatchingShizuku()
@@ -231,6 +233,7 @@ class MainViewModel(
     fun setAtNode(node: String) = modem.setAtNode(node)
 
     // The modem has already logged the outcome.
+    /** يشغل إجراء مودم واحدًا ويضبط حالة الانشغال ويحدث الحالة بعد النجاح. */
     private fun launchAction(
         refreshAfter: Boolean = true,
         block: suspend () -> String,
@@ -438,6 +441,7 @@ class MainViewModel(
         }
     }
 
+    /** يرفع الأقفال الحالية أو يطبق أول ملف محفوظ عند عدم وجود قفل. */
     fun toggleLocks() {
         val current = modem.state.value
         if (current.anyBandLock || current.anyCellLock || current.anyPlmnLock) {
