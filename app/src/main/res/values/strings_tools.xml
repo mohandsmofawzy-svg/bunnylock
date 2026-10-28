@@ -64,7 +64,7 @@
     <string name="tools_log">Log</string>
 
     <string name="tools_about">About</string>
-    <string name="tools_author">by @ririxi (BTSearch.pl developer)</string>
+    <string name="tools_author">by @Alpha (muhmmed developer)</string>
     <string name="tools_version">Version %1$s</string>
     <string name="tools_bunny_fact">Bunny fact: %1$s</string>
     <string-array name="bunny_facts">

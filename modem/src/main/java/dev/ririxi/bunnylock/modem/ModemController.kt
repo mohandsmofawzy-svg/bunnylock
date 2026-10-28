@@ -114,16 +114,16 @@ private const val MTK_PCI_UNSET = 65535
 private const val NR_DUAL_CONNECTIVITY_ENABLE = 1
 private const val NR_DUAL_CONNECTIVITY_DISABLE = 2
 
-private val HAL_LOCK_SETTLE = 8.seconds
-private val HAL_LOCK_RECHECK = 6.seconds
+private val HAL_LOCK_SETTLE = 5.seconds
+private val HAL_LOCK_RECHECK = 3.seconds
 private const val HAL_LOCK_RECHECKS = 2
 
 private const val PIXEL_AT_NODE = "/dev/umts_router"
 
-private val LIVE_CELL_SCAN_WAIT = 6000.milliseconds
+private val LIVE_CELL_SCAN_WAIT = 1500.milliseconds
 private val GAME_MODE_CELL_SCAN_WAIT = 5.seconds
 private val AUTOMATED_RECOVERY_COOLDOWN = 45.seconds
-private const val POOR_SIGNAL_RSRP_DBM = -120
+private const val POOR_SIGNAL_RSRP_DBM = -110
 private const val POOR_SIGNAL_SINR_DB = -5
 private const val POOR_SIGNAL_SAMPLES_FOR_RECOVERY = 3
 
