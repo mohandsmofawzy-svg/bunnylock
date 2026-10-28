@@ -2,9 +2,7 @@
     <style name="Theme.Bunnylock" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
     </style>
-<<<<<<< HEAD
-    <color name="bg">#111318</color>
-=======
     <color name="bg">#000000</color>
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
+    <color name="icon_bg">#000000</color>
+    <color name="icon_fg">#B3435A</color>
 </resources>

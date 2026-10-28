@@ -79,6 +79,9 @@ app/src/main/java/dev/ririxi/bunnylock/data/LockNotifier.kt
 app/src/main/java/dev/ririxi/bunnylock/data/Updates.kt
 فحص إصدار GitHub بمهلات اتصال وقراءة محددة.
 
+app/src/main/java/dev/ririxi/bunnylock/watchdog/Watchdog.kt وWatchdogService.kt وWatchdogEngine.kt
+مراقبة اختيارية لجودة الشبكة من دون إرسال أوامر للمودم. الخدمة تملك المحرك وتُوقف عند الخروج.
+
 الوصول والصلاحيات
 -----------------
 app/src/main/java/dev/ririxi/bunnylock/shizuku/RootOrShizuku.kt
@@ -93,7 +96,7 @@ app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuService.kt
 مكتبة المودم وقفل الترددات
 --------------------------
 modem/src/main/java/dev/ririxi/bunnylock/modem/ModemController.kt
-منسق الاتصال والتحديث والأقفال. يختار المسار بحسب الواجهة، ويتسلسل الأوامر والتحديث الكامل، ويتخطى تحديث الخلايا الحي عند انشغال المودم.
+منسق الاتصال والتحديث والأقفال والراديو. يسلسل التغيير وقراءة الحالة وAT وQMI، ويرفض الأوامر بعد بدء الإغلاق. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
 
 modem/src/main/java/dev/ririxi/bunnylock/modem/Model.kt
 نماذج الحالة والواجهات المدعومة وبيانات الجهاز والنطاقات.
@@ -105,7 +108,7 @@ modem/src/main/java/dev/ririxi/bunnylock/data/PrivilegedClient.kt
 واجهة start/call/stop المشتركة لعملاء Root وShizuku.
 
 modem/src/main/java/dev/ririxi/bunnylock/data/HelperClient.kt
-بروتوكول JSON بين التطبيق وRootServer، توزيع الردود حسب رقم الطلب، مهلات الطلبات، وإغلاق القنوات والطلبات المعلقة.
+بروتوكول JSON بين التطبيق وRootServer، توزيع الردود حسب رقم الطلب، المهلات، وإرسال exit وإكمال الطلبات المعلقة عند الإغلاق.
 
 modem/src/main/java/dev/ririxi/bunnylock/data/RootClient.kt
 بدء RootServer عبر su والتحقق من صلاحية root.
@@ -135,7 +138,7 @@ modem/src/main/java/dev/ririxi/bunnylock/root/Qmi.kt
 عميل QMI الأصلي وفتح/إغلاق اتصال QRTR.
 
 modem/src/main/java/dev/ririxi/bunnylock/root/Mediatek.kt
-أوامر MediaTek AT لقراءة النطاقات وقفل الخلايا وتطبيق إعدادات RAT.
+أوامر MediaTek AT لقراءة/تطبيق أقنعة EPBSE وEPBSEH وقفل الخلايا وRAT. يعتمد عدد الحقول على رد المودم ويرفض الردود الناقصة.
 
 modem/src/main/java/dev/ririxi/bunnylock/root/At.kt
 إرسال أوامر AT إلى منفذ المودم مع مهلة محددة وإغلاق واصف الملف.
@@ -154,6 +157,7 @@ modem/src/main/java/dev/ririxi/bunnylock/root/PhysicalChannels.kt
 
 modem/src/main/java/dev/ririxi/bunnylock/root/OemHook.kt
 اكتشاف والتواصل مع واجهات OEM hook.
+عند اختيار ril:1 يمر الأمر من هنا إلى واجهة الشركة المصنّعة بدل فتح TTY.
 
 modem/src/main/java/dev/ririxi/bunnylock/root/OemCallback.kt
 استقبال نتائج OEM hook وإرجاعها لطبقة الأمر.
@@ -174,4 +178,4 @@ TESTED_DEVICES.md
 
 ملاحظة حول المهام الخلفية
 -------------------------
-كان AndroidManifest.xml وMainViewModel.kt يشيران إلى Watchdog وخدمة Watchdog غير موجودين في ملفات المشروع. أزيلت الإشارات غير القابلة للبناء بدل اختراع خدمة مراقبة غير موثقة. التحديث الحي الموجود فعليًا يعمل أثناء عرض Home أو Cell lock فقط.
+تحديث الخلايا الحي يعمل أثناء عرض Home أو Cell lock كل ثانية، ويتخطى القراءة عند انشغال متحكم المودم. ترتيب الأوامر هو: الشاشة ← MainViewModel ← ModemController ← HelperClient ← RootServer ← Aosp أو Qualcomm أو Mediatek أو Pixel بحسب الواجهة المكتشفة. على MediaTek عبر ril:1 يمر الأمر عبر Mediatek ثم At وOemHook؛ وبعد التغيير تحدث الواجهة الحالة مرة واحدة. Watchdog للمراقبة فقط، ولا يبدل وضع الراديو.

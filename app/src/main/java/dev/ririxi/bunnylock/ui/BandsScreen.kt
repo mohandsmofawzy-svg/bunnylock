@@ -21,11 +21,6 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedListItem
-<<<<<<< HEAD
-import androidx.compose.material3.Text
-=======
-import androidx.compose.material3.Text as MaterialText
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -213,11 +208,7 @@ private fun BandGroup(
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconToggleButton(checked = pickingFavorites, onCheckedChange = ::pickFavorites) {
-<<<<<<< HEAD
-                            Icon(Icons.Rounded.Star, contentDescription = "Pick favorite bands")
-=======
                             Icon(Icons.Rounded.Star, contentDescription = translateUiText("Pick favorite bands", LocalAppLanguage.current))
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                         }
                         LockBadge(bandGroup.locked && bandGroup.stray === null, size = 40.dp, ignored = bandGroup.stray !== null)
                     }

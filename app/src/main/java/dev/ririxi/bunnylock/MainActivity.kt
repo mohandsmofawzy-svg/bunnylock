@@ -1,11 +1,8 @@
 package dev.ririxi.bunnylock
 
 import android.Manifest
-<<<<<<< HEAD
-=======
 import android.content.Context
 import android.content.res.Configuration
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -15,13 +12,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
-<<<<<<< HEAD
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.ririxi.bunnylock.data.LockNotifier
-import dev.ririxi.bunnylock.ui.BunnyApp
-import dev.ririxi.bunnylock.ui.MainViewModel
-import dev.ririxi.bunnylock.ui.theme.BunnyTheme
-=======
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -32,7 +22,6 @@ import dev.ririxi.bunnylock.ui.LocalAppLanguage
 import dev.ririxi.bunnylock.ui.MainViewModel
 import dev.ririxi.bunnylock.ui.theme.BunnyTheme
 import java.util.Locale
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
@@ -43,8 +32,6 @@ class MainActivity : ComponentActivity() {
             vm.refresh()
         }
 
-<<<<<<< HEAD
-=======
     // يضبط اللغة قبل إنشاء Compose حتى تتطابق الموارد واتجاه التخطيط مع الاختيار المحفوظ.
     override fun attachBaseContext(newBase: Context) {
         val language =
@@ -57,8 +44,6 @@ class MainActivity : ComponentActivity() {
         }
         super.attachBaseContext(newBase.createConfigurationContext(configuration))
     }
-
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -75,10 +60,6 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val state by vm.state.collectAsStateWithLifecycle()
-<<<<<<< HEAD
-            BunnyTheme(dynamicColor = state.dynamicColor) {
-                BunnyApp(vm)
-=======
             CompositionLocalProvider(
                 LocalAppLanguage provides state.language,
                 LocalLayoutDirection provides if (state.language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
@@ -86,7 +67,6 @@ class MainActivity : ComponentActivity() {
                 BunnyTheme {
                     BunnyApp(vm)
                 }
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
             }
         }
     }

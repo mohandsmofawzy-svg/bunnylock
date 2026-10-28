@@ -6,10 +6,7 @@ import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.Group
 import dev.ririxi.bunnylock.modem.LockRat
 import dev.ririxi.bunnylock.modem.ModemState
-<<<<<<< HEAD
 import dev.ririxi.bunnylock.watchdog.WatchdogState
-=======
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
 val Group.favoritesKey: String
     get() =
@@ -42,19 +39,12 @@ data class UiState(
     val form: CellForm = CellForm(),
     val plmnMcc: String = "",
     val plmnMnc: String = "",
-<<<<<<< HEAD
-    val dynamicColor: Boolean = true,
-=======
     val language: String = "en",
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     val checkUpdates: Boolean = true,
     val toolOutput: String = "",
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
-<<<<<<< HEAD
     val watchdog: WatchdogState = WatchdogState(),
-=======
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

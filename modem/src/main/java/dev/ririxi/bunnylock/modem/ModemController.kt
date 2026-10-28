@@ -23,11 +23,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-<<<<<<< HEAD
-=======
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -100,6 +97,7 @@ private const val QMI_NR_LOCK_GNB_LIST = 4
 
 // Long enough for the helper to go through airplane mode when the modem only changes the lock with LTE off.
 private val QC_LTE_LOCK_TIMEOUT = 60.seconds
+private val MTK_COMMAND_TIMEOUT = 90.seconds
 private val NET_MODE_TIMEOUT = 60.seconds
 private const val NET_MODE_SWITCH_CHECKS = 10
 private val NET_MODE_SWITCH_CHECK = 1.seconds
@@ -184,12 +182,6 @@ class ModemController(
     private inline fun updateState(transform: ModemState.() -> ModemState) = _state.update(transform)
 
     private var connecting: Job? = null
-<<<<<<< HEAD
-
-    fun close() = helper.stop()
-
-    fun connect() {
-=======
     // يمنع تداخل تغيير الإعدادات مع تحديث الحالة؛ بعض أوامر المودم تغيّر الراديو على مراحل.
     private val operationMutex = Mutex()
     @Volatile private var closed = false
@@ -210,31 +202,21 @@ class ModemController(
 
     fun connect() {
         if (closed) return
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         if (connecting?.isActive == true) return
         connecting = scope.launch { connectNow() }
     }
 
     /** For a helper that showed up or went away on its own: waits out a running attempt, which may already have settled it. */
     fun reconnect() {
-<<<<<<< HEAD
-        scope.launch {
-            connecting?.join()
-            if (current.root != RootState.Granted || !helper.running) connect()
-=======
         if (closed) return
         scope.launch {
             connecting?.join()
             if (!closed && (current.root != RootState.Granted || !helper.running)) connect()
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         }
     }
 
     fun helperLost(reason: String) {
-<<<<<<< HEAD
-=======
         if (closed) return
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         helper.stop()
         updateState { copy(root = RootState.Denied(reason)) }
     }
@@ -315,13 +297,14 @@ class ModemController(
         current.sims.firstOrNull { it.slot == current.sim - 1 }?.subId ?: SubscriptionManager.getDefaultSubscriptionId()
 
     fun setSim(sim: Int) {
+        if (closed) return
         val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
         updateState { copy(sim = sim, atNode = atNode) }
         refresh()
     }
 
     fun setBackend(backend: Backend) {
-        if (!current.allows(backend)) return
+        if (closed || !current.allows(backend)) return
         prefs.edit().putString("backend", backend.name).apply()
         updateState {
             copy(backend = backend, groups = emptyList(), lteLock = null, nrLock = null, legacyCellLock = null, strayChannel = null)
@@ -330,11 +313,13 @@ class ModemController(
     }
 
     fun setPersist(enabled: Boolean) {
+        if (closed) return
         prefs.edit().putBoolean("persist", enabled).apply()
         updateState { copy(persist = enabled) }
     }
 
     fun setAtNode(node: String) {
+        if (closed) return
         prefs.edit().putString("atNode", node).apply()
         updateState { copy(atNode = node) }
     }
@@ -348,14 +333,10 @@ class ModemController(
         goal: String,
         successMessage: String,
         block: suspend () -> String?,
-<<<<<<< HEAD
-    ): String = attempt(goal) { block() ?: successMessage }.also(::log)
-=======
     ): String = operationMutex.withLock {
         check(!closed) { "The modem controller is closed." }
         attempt(goal) { block() ?: successMessage }.also(::log)
     }
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
     private suspend fun <T> attempt(
         goal: String,
@@ -391,26 +372,24 @@ class ModemController(
         return found
     }
 
-    /**
-     * A modem tty is shared with the phone's own radio software, which can swallow the reply. When a command fails
-     * there and the RIL passthrough works, the command is redone through it and the passthrough stays selected.
-     */
+    /** A failed write is not replayed through another route because a timeout cannot prove it was never applied. */
     private suspend fun callMediatek(
         command: String,
+        retryReadOnRil: Boolean = false,
         build: JSONObject.() -> Unit = {},
     ): JSONObject {
         val node = mtkNode()
         return try {
-            helper.call(command) {
+            helper.call(command, MTK_COMMAND_TIMEOUT) {
                 put("node", node)
                 build()
             }
         } catch (e: RootException) {
-            if (node.startsWith(RIL_NODE_PREFIX) || current.device?.mtkOemHook != true) throw e
+            if (!retryReadOnRil || node.startsWith(RIL_NODE_PREFIX) || current.device?.mtkOemHook != true) throw e
             val ril = rilNode(current.sim)
             log("$node failed (${reason(e).asClause()}), so MediaTek commands go through the RIL from now on.")
             setAtNode(ril)
-            helper.call(command) {
+            helper.call(command, MTK_COMMAND_TIMEOUT) {
                 put("node", ril)
                 build()
             }
@@ -611,6 +590,7 @@ class ModemController(
 
     /** Returns a note for the user, or null. */
     private suspend fun finishHalUnlock(freed: List<JSONObject>): String? {
+        if (freed.isEmpty()) return null
         if (current.device?.vendor == "mediatek") {
             return try {
                 restartSimRadio()
@@ -745,8 +725,9 @@ class ModemController(
         group: Group,
         supportedBands: List<Int>?,
         currentBands: List<Int>?,
+        useDefaultsWhenUnknown: Boolean = true,
     ): BandGroupState {
-        val knownBands = supportedBands?.takeIf { it.isNotEmpty() } ?: group.defaults()
+        val knownBands = supportedBands?.takeIf { it.isNotEmpty() } ?: if (useDefaultsWhenUnknown) group.defaults() else emptyList()
         val supported = (knownBands + currentBands.orEmpty()).distinct().sorted()
         val current = currentBands?.toSet()
         return BandGroupState(group, supported, current)
@@ -765,20 +746,12 @@ class ModemController(
 
     fun refresh() =
         scope.launch {
-<<<<<<< HEAD
-            if (current.root == RootState.Granted && !helper.running) reconnect() else refreshNow()
-        }
-
-    suspend fun refreshNow() {
-        if (!helper.running) return
-=======
             if (closed) return@launch
             if (current.root == RootState.Granted && !helper.running) reconnect() else refreshNow()
         }
 
     suspend fun refreshNow() = operationMutex.withLock {
         if (closed || !helper.running) return@withLock
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         updateState { copy(refreshing = true) }
         try {
             // Subscription ids change when a SIM is swapped or switched off and on.
@@ -868,50 +841,7 @@ class ModemController(
         return Carriers.complete(carriers, cells, signals)
     }
 
-    /**
-     * Updates serving cells and signal. [skipCellScan] skips the Android cell-info request and the Qualcomm
-<<<<<<< HEAD
-     * serving query so a foreground watchdog does not stack on the 500 ms live refresh.
-     */
-    suspend fun refreshConnection(skipCellScan: Boolean = false) {
-        if (!helper.running || current.refreshing || current.root != RootState.Granted) return
-        val sim = current.sim
-        val subscriptionId = subId()
-        if (!skipCellScan && current.backend == Backend.QUALCOMM) {
-            runSuspendCatching { helper.call("qc.serving") { put("sim", sim) } }.getOrNull()?.let { serving ->
-                qualcommServingReport = serving
-                backendCells = runCatching { Cells.fromQualcomm(serving) }.getOrDefault(backendCells)
-                backendCarriers = Carriers.fromReport(serving.optJSONArray("carriers"))
-            }
-        }
-        val cells =
-            if (skipCellScan) {
-                current.cells
-            } else {
-                Cells.merge(backendCells, Cells.scan(context, subscriptionId, LIVE_CELL_SCAN_WAIT))
-            }
-        val signals = Carriers.signals(context, subscriptionId)
-        val carriers = connectionCarriers(sim, cells, signals)
-        val telephony =
-            context.getSystemService(TelephonyManager::class.java)?.let {
-                if (subscriptionId >= 0) it.createForSubscriptionId(subscriptionId) else it
-            }
-        val identity = telephony?.let(::telephonyIdentity)
-        if (current.refreshing || current.sim != sim) return
-        updateState {
-            copy(
-                cells = cells,
-                carriers = carriers,
-                signals = signals,
-                registeredPlmn = identity?.registeredPlmn ?: registeredPlmn,
-                registeredName = identity?.registeredName ?: registeredName,
-                homePlmn = identity?.homePlmn ?: homePlmn,
-                homeName = identity?.homeName ?: homeName,
-                roaming = identity?.roaming ?: roaming,
-            )
-=======
-    * serving query so foreground cell refreshes do not compete with this request.
-     */
+    /** Updates serving cells and signal without competing with lock or refresh operations. */
     suspend fun refreshConnection(skipCellScan: Boolean = false) {
         if (closed || !operationMutex.tryLock()) return
         try {
@@ -953,7 +883,6 @@ class ModemController(
             }
         } finally {
             operationMutex.unlock()
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         }
     }
 
@@ -1127,16 +1056,16 @@ class ModemController(
         sim: Int,
         aospState: JSONObject?,
     ): BackendReadout {
-        val mtkState = callMediatek("mtk.state")
+        val mtkState = callMediatek("mtk.state", retryReadOnRil = true)
         val supported = mtkState.optJSONObject("supported") ?: JSONObject()
         val current = mtkState.optJSONObject("current") ?: JSONObject()
-        val groups = mutableListOf(bandGroupState(Group.LTE, supported.intList("lte"), current.intList("lte")))
+        val groups = mutableListOf(bandGroupState(Group.LTE, supported.intList("lte"), current.intList("lte"), useDefaultsWhenUnknown = false))
         val supportedNr = supported.intList("nr")
         if (supportedNr !== null && (supportedNr.isNotEmpty() || has5g(aospState))) {
-            groups += bandGroupState(Group.NR, supportedNr, current.intList("nr"))
+            groups += bandGroupState(Group.NR, supportedNr, current.intList("nr"), useDefaultsWhenUnknown = false)
         }
-        groups += bandGroupState(Group.WCDMA, supported.intList("wcdma"), current.intList("wcdma"))
-        groups += bandGroupState(Group.GSM, supported.intList("gsm"), current.intList("gsm"))
+        groups += bandGroupState(Group.WCDMA, supported.intList("wcdma"), current.intList("wcdma"), useDefaultsWhenUnknown = false)
+        groups += bandGroupState(Group.GSM, supported.intList("gsm"), current.intList("gsm"), useDefaultsWhenUnknown = false)
         // While Android holds part of the mode back, its mask stays, so the note can explain the difference.
         val allowedMask = mtkState.takeIf { it.has("ratMask") && aospState?.has("modeHeldBack") != true }?.optLong("ratMask")
         // A modem that refuses AT+EMMCHLCK gets its cell lock through the radio HAL, so the lock is read from there too.
@@ -1992,14 +1921,17 @@ class ModemController(
         }
 
     suspend fun sendAt(command: String): String =
-        attempt("send the AT command") {
-            val response =
-                helper.call("at", 15.seconds) {
-                    put("node", current.atNode)
-                    put("command", command)
-                    put("timeout", 6000)
-                }
-            response.optString("reply")
+        operationMutex.withLock {
+            check(!closed) { "The modem controller is closed." }
+            attempt("send the AT command") {
+                val response =
+                    helper.call("at", 15.seconds) {
+                        put("node", current.atNode)
+                        put("command", command)
+                        put("timeout", 6000)
+                    }
+                response.optString("reply")
+            }
         }
 
     suspend fun sendQmi(
@@ -2007,12 +1939,15 @@ class ModemController(
         msg: Int,
         payload: String,
     ): JSONObject =
-        attempt("send QMI message 0x%04X".format(msg)) {
-            helper.call("qc.raw") {
-                put("sim", current.sim)
-                put("service", service)
-                put("msg", msg)
-                put("payload", payload)
+        operationMutex.withLock {
+            check(!closed) { "The modem controller is closed." }
+            attempt("send QMI message 0x%04X".format(msg)) {
+                helper.call("qc.raw") {
+                    put("sim", current.sim)
+                    put("service", service)
+                    put("msg", msg)
+                    put("payload", payload)
+                }
             }
         }
 

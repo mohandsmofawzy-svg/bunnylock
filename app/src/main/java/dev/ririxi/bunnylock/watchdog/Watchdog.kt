@@ -84,7 +84,9 @@ object Watchdog {
     }
 
     fun stop(context: Context) {
-        context.startService(Intent(context, WatchdogService::class.java).setAction(WatchdogService.ACTION_STOP))
+        context.stopService(Intent(context, WatchdogService::class.java))
+        subscriptionId = { -1 }
+        mutable.update { it.copy(running = false, starting = false, verdict = WatchdogVerdict.IDLE) }
     }
 
     internal fun appendLog(line: String) {

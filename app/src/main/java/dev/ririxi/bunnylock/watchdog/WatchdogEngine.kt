@@ -67,6 +67,8 @@ private val TARGETS =
 internal class WatchdogEngine(
     context: Context,
 ) {
+    private val app = context.applicationContext
+    private val connectivity = checkNotNull(app.getSystemService(ConnectivityManager::class.java))
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var loop: Job? = null
     private val lock = Any()
@@ -87,7 +89,6 @@ internal class WatchdogEngine(
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 defaultNetwork = network
-                val connectivity = null
                 defaultCaps = connectivity.getNetworkCapabilities(network)
             }
 
@@ -113,7 +114,6 @@ internal class WatchdogEngine(
         synchronized(lock) {
             if (loop?.isActive == true) return
             runCatching { connectivity.registerDefaultNetworkCallback(callback) }
-            val connectivity = null
             defaultNetwork = connectivity.activeNetwork
             defaultCaps = defaultNetwork?.let { connectivity.getNetworkCapabilities(it) }
             loop = scope.launch { runLoop() }
@@ -140,7 +140,14 @@ internal class WatchdogEngine(
         Watchdog.appendLog("${now()}  Watchdog started (observe only).")
         try {
             while (isActive) {
-                val sample = runCatching { sampleOnce() }.getOrElse { errorSample(it) }
+                val sample =
+                    try {
+                        sampleOnce()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        errorSample(e)
+                    }
                 val line = formatLog(sample)
                 Watchdog.appendLog(line)
                 Watchdog.mutable.value =

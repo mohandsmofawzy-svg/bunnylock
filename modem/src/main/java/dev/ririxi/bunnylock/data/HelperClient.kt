@@ -25,12 +25,11 @@ abstract class HelperClient(
     private val context: Context,
     private val name: String,
 ) : PrivilegedClient {
+    @Volatile
     private var process: Process? = null
+    @Volatile
     private var writer: BufferedWriter? = null
-<<<<<<< HEAD
-=======
     // يربط كل رقم طلب برده حتى لا تختلط نتائج الأوامر المتزامنة.
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     private val pendingReplies = ConcurrentHashMap<Int, CompletableDeferred<JSONObject>>()
     private val lastRequestId = AtomicInteger(0)
 
@@ -147,19 +146,8 @@ abstract class HelperClient(
         return response.optJSONObject("data") ?: JSONObject()
     }
 
+    @Synchronized
     override fun stop() {
-<<<<<<< HEAD
-        // A helper that is already gone can't take the exit command. Destroying the process covers that case.
-        runCatching {
-            writer?.apply {
-                write("{\"cmd\":\"exit\"}\n")
-                flush()
-            }
-        }
-        process?.destroy()
-        process = null
-        writer = null
-=======
         // أرسل exit ثم أغلق الأنابيب وأكمل الطلبات المنتظرة كي لا تبقى مهام الواجهة معلقة.
         val activeProcess = process
         val activeWriter = writer
@@ -181,6 +169,5 @@ abstract class HelperClient(
         val stopped = RootException("The $name stopped.")
         pendingReplies.values.forEach { it.completeExceptionally(stopped) }
         pendingReplies.clear()
->>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     }
 }

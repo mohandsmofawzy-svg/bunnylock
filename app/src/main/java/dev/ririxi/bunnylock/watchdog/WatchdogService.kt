@@ -73,6 +73,7 @@ class WatchdogService : Service() {
     override fun onDestroy() {
         notifyJob?.cancel()
         engine.stop()
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 

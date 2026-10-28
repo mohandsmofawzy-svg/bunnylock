@@ -96,14 +96,17 @@ object Mediatek {
         /** Read from +EPBSEH because the modem doesn't answer +EPBSE. */
         val fromEpbseh: Boolean = false,
     ) {
-        val hasExtendedLte get() = fieldCount > 5
+        val hasExtendedLte get() = fieldCount > EPBSE_SHORT_FIELD_COUNT
     }
 
     private fun parseEpbse(reply: String): Epbse? {
         val line = reply.lines().firstOrNull { it.startsWith("+EPBSE:") } ?: return null
         val fields = line.removePrefix("+EPBSE:").split(',').map { it.trim() }
-        val words = LongArray(EPBSE_WORD_COUNT) { index -> fields.getOrNull(index)?.toLongOrNull() ?: 0L }
-        return Epbse(words, fields.size)
+        if (fields.size < EPBSE_SHORT_FIELD_COUNT) return null
+        val values = fields.map { it.toLongOrNull() ?: return null }
+        if (values.any { it !in 0L..0xFFFFFFFFL }) return null
+        val words = LongArray(EPBSE_WORD_COUNT) { index -> values.getOrNull(index) ?: 0L }
+        return Epbse(words, minOf(values.size, EPBSE_WORD_COUNT))
     }
 
     /** Each field is a run of 8-digit hex words. A shorter last word is padded with zeros on the right. */
@@ -257,27 +260,36 @@ object Mediatek {
         }
         // A modem without +EPBSE takes every technology in one +EPBSEH, so the NR bands go along even when they don't change.
         val epbsehOnly = supported.fromEpbseh || current.fromEpbseh
-        if (!epbsehOnly && (gsm !== null || wcdma !== null || lte !== null)) At.ok(node, epbseCommand(words, supported.hasExtendedLte))
-        if (nr !== null || epbsehOnly) {
+        val epbseChanged = !words.contentEquals(current.words)
+        val nrWords = if (nr !== null || epbsehOnly) {
             val supportedNr = nrWordsOf(supportedHex) ?: throw IOException("This modem doesn't support AT+EPBSEH, so it may not have 5G.")
-            val nrWords =
+            val currentNr = nrWordsOf(currentHex)
+            if (nr === null && currentNr === null) throw IOException("Couldn't read the current 5G bands to preserve them.")
+            val targetNr =
                 when {
                     // The modem leaves trailing zero words out of its reply, so they are put back.
-                    nr === null -> nrWordsOf(currentHex)?.copyOf(supportedNr.size) ?: supportedNr
+                    nr === null -> checkNotNull(currentNr).copyOf(supportedNr.size)
                     nr.isEmpty() -> supportedNr
                     else -> Bands.toWords(nr, supportedNr.size)
                 }
-            At.ok(node, epbsehCommand(words, nrWords))
+            targetNr
+        } else {
+            null
         }
-        return state(node)
+        val nrChanged =
+            nrWords !== null &&
+                (nrWordsOf(currentHex)?.copyOf(nrWords.size)?.contentEquals(nrWords) != true)
+        if (!epbsehOnly && epbseChanged) At.ok(node, epbseCommand(words, supported.fieldCount))
+        if (nrWords !== null && (epbseChanged || nrChanged)) At.ok(node, epbsehCommand(words, nrWords))
+        return JSONObject().put("node", node)
     }
 
     private fun epbseCommand(
         words: LongArray,
-        extendedLte: Boolean,
+        fieldCount: Int,
     ): String {
-        val fieldCount = if (extendedLte) EPBSE_WORD_COUNT else EPBSE_SHORT_FIELD_COUNT
-        return "AT+EPBSE=" + (0 until fieldCount).joinToString(",") { words[it].toString() }
+        val writableFields = fieldCount.coerceIn(EPBSE_SHORT_FIELD_COUNT, EPBSE_WORD_COUNT)
+        return "AT+EPBSE=" + (0 until writableFields).joinToString(",") { words[it].toString() }
     }
 
     /** +EPBSEH sets every technology at once, so the GSM, UMTS and LTE words go in next to the NR ones. */
