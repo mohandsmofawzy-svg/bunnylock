@@ -440,7 +440,6 @@ fun DeviceSpoofingCard(
         }
         Text(stringResource(state.displayResult.label), style = MaterialTheme.typography.bodyMediumEmphasized)
         Text(stringResource(R.string.tools_pubg_options_unknown), style = MaterialTheme.typography.bodyMediumEmphasized)
-        Text(stringResource(R.string.tools_pubg_manual_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.tools_device_spoof_fps_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

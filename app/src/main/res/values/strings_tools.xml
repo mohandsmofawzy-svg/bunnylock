@@ -28,7 +28,6 @@
     <string name="tools_pubg_package_not_found">No known PUBG MOBILE package was found. Other regional builds may use another package name.</string>
     <string name="tools_pubg_device_heading">Device hardware information</string>
     <string name="tools_pubg_options_unknown">90/120 FPS options: Unknown. Android does not expose another app’s graphics menu to Bunny Lock.</string>
-    <string name="tools_pubg_manual_steps">Manual check: open PUBG MOBILE → Settings → Graphics → Frame Rate. Record whether 90 or 120 FPS appears and which option is selected. After changing the display mode above, fully close and reopen the game and compare. Use PUBG’s in-game FPS counter to check actual frame rate; display Hz alone is not proof.</string>
     <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">Not checked</string>
     <string name="tools_device_spoof_checking">Checking…</string>

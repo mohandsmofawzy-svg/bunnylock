@@ -25,7 +25,6 @@
     <string name="tools_pubg_package_not_found">لم يُعثر على حزمة معروفة من PUBG MOBILE. قد تستخدم النسخ الإقليمية الأخرى اسمًا مختلفًا.</string>
     <string name="tools_pubg_device_heading">معلومات عتاد الجهاز</string>
     <string name="tools_pubg_options_unknown">خيارات 90/120 FPS: غير معروفة. لا يتيح Android لـBunny Lock قراءة قائمة الرسومات في تطبيق آخر.</string>
-    <string name="tools_pubg_manual_steps">فحص يدوي: افتح PUBG MOBILE ← الإعدادات ← الرسومات ← معدل الإطارات. سجّل ظهور 90 أو 120 FPS والخيار المحدد. بعد تغيير وضع الشاشة أعلاه، أغلق اللعبة تمامًا وافتحها مجددًا وقارن. استخدم عداد FPS داخل اللعبة للتحقق من الإطارات الفعلية؛ معدل Hz وحده ليس دليلًا.</string>
     <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">لم يتم الفحص</string>
     <string name="tools_device_spoof_checking">جارٍ الفحص…</string>

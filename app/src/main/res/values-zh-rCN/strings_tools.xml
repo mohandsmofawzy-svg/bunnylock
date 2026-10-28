@@ -24,7 +24,6 @@
     <string name="tools_pubg_package_not_found">未找到已知的 PUBG MOBILE 包。其他地区版本可能使用不同包名。</string>
     <string name="tools_pubg_device_heading">设备硬件信息</string>
     <string name="tools_pubg_options_unknown">90/120 FPS 选项：未知。Android 不会向 Bunny Lock 暴露其他应用的画质菜单。</string>
-    <string name="tools_pubg_manual_steps">手动检查：打开 PUBG MOBILE → 设置 → 画面设置 → 帧率，记录是否显示 90 或 120 FPS 以及当前选项。更改上方屏幕模式后，彻底关闭并重新打开游戏进行对比。请用游戏内 FPS 计数器确认实际帧率；屏幕 Hz 不能作为证明。</string>
     <string name="tools_device_spoof_shizuku">Shizuku：%1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">尚未检查</string>
     <string name="tools_device_spoof_checking">正在检查…</string>

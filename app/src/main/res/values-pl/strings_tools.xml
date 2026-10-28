@@ -24,7 +24,6 @@
     <string name="tools_pubg_package_not_found">Nie znaleziono znanego pakietu PUBG MOBILE. Inne wersje regionalne mogą mieć inną nazwę pakietu.</string>
     <string name="tools_pubg_device_heading">Informacje o sprzęcie urządzenia</string>
     <string name="tools_pubg_options_unknown">Opcje 90/120 FPS: nieznane. Android nie udostępnia Bunny Lock menu grafiki innej aplikacji.</string>
-    <string name="tools_pubg_manual_steps">Sprawdź ręcznie: otwórz PUBG MOBILE → Ustawienia → Grafika → Liczba klatek. Zapisz, czy dostępne jest 90 lub 120 FPS i która opcja jest wybrana. Po zmianie trybu ekranu zamknij grę całkowicie, uruchom ponownie i porównaj. Rzeczywiste FPS sprawdzaj licznikiem w grze; samo Hz nie jest dowodem.</string>
     <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">Nie sprawdzono</string>
     <string name="tools_device_spoof_checking">Sprawdzanie…</string>
