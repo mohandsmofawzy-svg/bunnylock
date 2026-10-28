@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
@@ -107,6 +108,7 @@ enum class Tab(
 fun BunnyApp(vm: MainViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
+    var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(Tab.HOME) }
     if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) {
         LiveRefresh(vm, state.gameModeEnabled)
@@ -142,6 +144,9 @@ fun BunnyApp(vm: MainViewModel) {
                                 }
                             }
                         }
+                    }
+                    IconButton(onClick = { showExitConfirmation = true }) {
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.tools_exit))
                     }
                 },
                 colors =
@@ -223,14 +228,33 @@ fun BunnyApp(vm: MainViewModel) {
                             Tab.BANDS -> BandsScreen(state, vm, contentPadding)
                             Tab.CELL -> CellScreen(state, vm, contentPadding)
                             Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding)
-                            Tab.TOOLS -> ToolsScreen(state, vm, contentPadding) {
-                                vm.exitApplication { activity?.finishAndRemoveTask() }
-                            }
+                            Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text(stringResource(R.string.tools_exit)) },
+            text = { Text(stringResource(R.string.tools_exit_confirmation)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        vm.exitApplication { activity?.finishAndRemoveTask() }
+                    },
+                ) { Text(stringResource(R.string.tools_exit)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text(stringResource(R.string.tools_exit_cancel))
+                }
+            },
+        )
     }
 }
 
