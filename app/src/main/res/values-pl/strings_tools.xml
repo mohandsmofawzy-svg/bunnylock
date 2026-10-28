@@ -17,12 +17,13 @@
     <string name="tools_updates">Aktualizacje</string>
     <string name="tools_device_spoofing">Zmiana tożsamości urządzenia</string>
     <string name="tools_device_spoof_profile">Zmiana tożsamości — profil ROG Phone 6</string>
-    <string name="tools_device_spoof_hint">Eksperymentalny test tożsamości. Nie gwarantuje wyższej liczby klatek w grach.</string>
-    <string name="tools_device_spoof_target">Profil referencyjny: ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. Nie zastosowano żadnych wartości.</string>
+    <string name="tools_device_spoof_hint">Zmiana tożsamości nie jest dostępna na zwykłym urządzeniu bez roota. Przełącznik testuje wyłącznie obsługiwane ustawienie odświeżania ekranu i nie zmienia informacji widocznych dla gry.</string>
+    <string name="tools_device_spoof_target">Profil referencyjny: ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. Nie zastosowano wartości tożsamości.</string>
     <string name="tools_device_spoof_shizuku">Shizuku: %1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">Nie sprawdzono</string>
     <string name="tools_device_spoof_checking">Sprawdzanie…</string>
     <string name="tools_device_spoof_shizuku_connected">Połączono, uprawnienie przyznane</string>
+    <string name="tools_device_spoof_service_uid">UID usługi Shizuku: %1$d (dozwolony jest tylko shell UID 2000)</string>
     <string name="tools_device_spoof_shizuku_missing">Shizuku nie jest zainstalowane</string>
     <string name="tools_device_spoof_shizuku_stopped">Shizuku nie jest uruchomione</string>
     <string name="tools_device_spoof_permission_denied">Nie przyznano uprawnienia Shizuku</string>
@@ -30,7 +31,7 @@
     <string name="tools_device_spoof_error">Nie udało się odczytać tożsamości urządzenia</string>
     <string name="tools_device_spoof_idle">Test nie został uruchomiony. Przełącznik pokazuje, czy zmiana tożsamości jest faktycznie aktywna.</string>
     <string name="tools_device_spoof_success">Potwierdzono zmianę tożsamości.</string>
-    <string name="tools_device_spoof_unsupported">Właściwości tożsamości systemu są tylko do odczytu podczas działania Androida. Nie próbowano ich zmieniać, więc funkcja jest wyłączona, a wartości pozostały bez zmian.</string>
+    <string name="tools_device_spoof_unsupported">Właściwości tożsamości systemu są tylko do odczytu podczas działania Androida. Zmiana tożsamości pozostaje nieaktywna, a oryginalne wartości są bez zmian; ustawienie ekranu poniżej to osobny test.</string>
     <string name="tools_device_spoof_unverified">Nie udało się odczytać wszystkich właściwości tożsamości. Niczego nie zmieniono, a rozpoznanie przez grę nie jest potwierdzone.</string>
     <string name="tools_device_spoof_system_values">Oryginalne właściwości systemu (tylko do odczytu)</string>
     <string name="tools_device_spoof_app_values">Wartości widoczne w Bunny Lock</string>
@@ -38,7 +39,19 @@
     <string name="tools_device_spoof_supported_hz">Obsługiwane tryby ekranu: %1$s Hz</string>
     <string name="tools_device_spoof_rates_unknown">Obsługiwane tryby ekranu są niedostępne</string>
     <string name="tools_device_spoof_refresh">Bieżące odświeżanie ekranu: %1$s. %2$s.</string>
-    <string name="tools_device_spoof_fps_note">Odświeżanie ekranu to nie FPS gry. Nie sprawdzono obsługi urządzenia przez grę ani rzeczywistego FPS; wpływ pozostaje niepotwierdzony. Wyłączenie nie przywraca wartości, ponieważ żadnej nie zmieniono.</string>
+    <string name="tools_device_spoof_setting_unset">Nie ustawiono jawnie (wartość domyślna systemu)</string>
+    <string name="tools_device_spoof_settings">Bieżące ustawienia min / max: %1$s / %2$s Hz</string>
+    <string name="tools_device_spoof_original_settings">Zapisane oryginalne min / max: %1$s / %2$s Hz</string>
+    <string name="tools_device_spoof_select_rate">Wybierz obsługiwany tryb ekranu</string>
+    <string name="tools_device_spoof_screen_toggle">Przełącznik: zastosuj lub przywróć ustawienie odświeżania ekranu</string>
+    <string name="tools_device_spoof_screen_idle">Nie zmieniono ustawień ekranu.</string>
+    <string name="tools_device_spoof_screen_applied">Ustawienie systemowe i bieżące odświeżanie odpowiadają wybranemu trybowi.</string>
+    <string name="tools_device_spoof_screen_setting_only">Odczyt ustawienia potwierdził zmianę, ale aktywna częstotliwość ekranu jej nie potwierdziła.</string>
+    <string name="tools_device_spoof_screen_unsupported">To urządzenie lub sesja Shizuku shell nie obsługuje zmiany ustawienia odświeżania ekranu.</string>
+    <string name="tools_device_spoof_screen_error">Nie udało się zastosować ani zweryfikować ustawienia ekranu.</string>
+    <string name="tools_device_spoof_screen_restored">Przywrócono i zweryfikowano pierwotne ustawienie ekranu.</string>
+    <string name="tools_device_spoof_screen_restore_pending">Przywracanie oczekuje. Zapisano wartość pierwotną; połącz ponownie Shizuku, aby ją przywrócić.</string>
+    <string name="tools_device_spoof_fps_note">Odświeżanie ekranu to nie FPS gry. Test dotyczy tylko ustawienia systemowego; gra może je zignorować lub stosować własną listę urządzeń. Nie testowano FPS w grze. OFF przywraca zapisane ustawienie systemowe.</string>
     <string name="tools_check_updates">Sprawdzaj aktualizacje</string>
     <string name="tools_check_updates_hint">Przy starcie aplikacji szuka nowej wersji na GitHubie.</string>
 

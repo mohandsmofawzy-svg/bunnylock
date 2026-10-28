@@ -179,7 +179,7 @@ fun BunnyApp(vm: MainViewModel) {
                     )
                     Button(onClick = vm::connect, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.shell_try_again)) }
                     TextButton(onClick = vm::copyDiagnostics, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.common_copy_diagnostics)) }
-                    DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing)
+                    DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing, vm::selectDeviceRefreshRate)
                 }
             }
 

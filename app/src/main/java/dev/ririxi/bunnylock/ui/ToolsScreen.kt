@@ -117,7 +117,7 @@ fun ToolsScreen(
 
         item { LanguageSection() }
 
-        item { DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing) }
+        item { DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing, vm::selectDeviceRefreshRate) }
 
         item {
             SectionHeader(stringResource(R.string.tools_updates))
@@ -360,6 +360,7 @@ fun ToolsScreen(
 fun DeviceSpoofingCard(
     state: dev.ririxi.bunnylock.shizuku.DeviceSpoofingState,
     onCheckedChange: (Boolean) -> Unit,
+    onRateSelected: (Float) -> Unit,
 ) {
     SectionHeader(stringResource(R.string.tools_device_spoofing))
     Panel {
@@ -367,6 +368,7 @@ fun DeviceSpoofingCard(
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.tools_device_spoof_profile), style = MaterialTheme.typography.titleSmallEmphasized)
                 Text(stringResource(R.string.tools_device_spoof_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.tools_device_spoof_screen_toggle), style = MaterialTheme.typography.labelSmall)
             }
             Switch(checked = state.isOn, onCheckedChange = onCheckedChange, enabled = !state.checking)
         }
@@ -374,6 +376,7 @@ fun DeviceSpoofingCard(
             stringResource(R.string.tools_device_spoof_shizuku, stringResource(state.shizukuStatus.label)),
             style = MaterialTheme.typography.bodySmall,
         )
+        state.serviceUid?.let { Text(stringResource(R.string.tools_device_spoof_service_uid, it), style = MaterialTheme.typography.bodySmall) }
         Text(stringResource(state.result.label(state.problem)), style = MaterialTheme.typography.bodyMediumEmphasized)
         Text(stringResource(R.string.tools_device_spoof_target), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
@@ -387,6 +390,8 @@ fun DeviceSpoofingCard(
                     }
                 }
             }
+        }
+        if (state.appBuildValues.isNotEmpty()) {
             Text(stringResource(R.string.tools_device_spoof_app_values), style = MaterialTheme.typography.labelLarge)
             state.appBuildValues.forEach { (key, value) ->
                 Text("$key: $value", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
@@ -399,9 +404,42 @@ fun DeviceSpoofingCard(
             ?.let { stringResource(R.string.tools_device_spoof_supported_hz, it) }
             ?: stringResource(R.string.tools_device_spoof_rates_unknown)
         Text(stringResource(R.string.tools_device_spoof_refresh, currentRate, supportedRates), style = MaterialTheme.typography.bodySmall)
+        val unsetSetting = stringResource(R.string.tools_device_spoof_setting_unset)
+        val unknownSetting = stringResource(R.string.common_unknown)
+        val minSetting = state.minRefreshSetting?.let { if (it == "null") unsetSetting else it } ?: unknownSetting
+        val peakSetting = state.peakRefreshSetting?.let { if (it == "null") unsetSetting else it } ?: unknownSetting
+        Text(stringResource(R.string.tools_device_spoof_settings, minSetting, peakSetting), style = MaterialTheme.typography.bodySmall)
+        if (state.restorationPending) {
+            val originalMin = state.originalMinRefreshSetting?.let { if (it == "null") unsetSetting else it } ?: unknownSetting
+            val originalPeak = state.originalPeakRefreshSetting?.let { if (it == "null") unsetSetting else it } ?: unknownSetting
+            Text(stringResource(R.string.tools_device_spoof_original_settings, originalMin, originalPeak), style = MaterialTheme.typography.bodySmall)
+        }
+        if (state.supportedRefreshRates.isNotEmpty()) {
+            Text(stringResource(R.string.tools_device_spoof_select_rate), style = MaterialTheme.typography.labelLarge)
+            ConnectedChoice(
+                options = state.supportedRefreshRates,
+                selected = state.selectedRefreshRate,
+                label = { stringResource(R.string.tools_device_spoof_hz, it) },
+                onSelect = onRateSelected,
+                enabled = !state.checking && !state.isOn,
+            )
+        }
+        Text(stringResource(state.displayResult.label), style = MaterialTheme.typography.bodyMediumEmphasized)
         Text(stringResource(R.string.tools_device_spoof_fps_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+private val dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.label: Int
+    get() = when (this) {
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.IDLE -> R.string.tools_device_spoof_screen_idle
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.CHECKING -> R.string.tools_device_spoof_checking
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.APPLIED -> R.string.tools_device_spoof_screen_applied
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.SETTING_ONLY -> R.string.tools_device_spoof_screen_setting_only
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.UNSUPPORTED -> R.string.tools_device_spoof_screen_unsupported
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.ERROR -> R.string.tools_device_spoof_screen_error
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.RESTORED -> R.string.tools_device_spoof_screen_restored
+        dev.ririxi.bunnylock.shizuku.DeviceDisplayResult.RESTORE_PENDING -> R.string.tools_device_spoof_screen_restore_pending
+    }
 
 private val dev.ririxi.bunnylock.shizuku.DeviceSpoofingShizukuStatus.label: Int
     get() = when (this) {

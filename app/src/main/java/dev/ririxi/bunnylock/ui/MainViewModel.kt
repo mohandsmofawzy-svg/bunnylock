@@ -152,12 +152,10 @@ class MainViewModel(
     fun refresh() = modem.refresh()
 
     fun setDeviceSpoofing(enabled: Boolean) {
-        if (enabled) {
-            viewModelScope.launch { deviceSpoofing.testProfile() }
-        } else {
-            deviceSpoofing.disable()
-        }
+        viewModelScope.launch { deviceSpoofing.setHighRefreshRate(enabled) }
     }
+
+    fun selectDeviceRefreshRate(rate: Float) = deviceSpoofing.selectRefreshRate(rate)
 
     suspend fun refreshConnection() = modem.refreshConnection()
 

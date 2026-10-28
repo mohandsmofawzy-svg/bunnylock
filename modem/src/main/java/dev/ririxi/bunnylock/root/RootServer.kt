@@ -102,6 +102,12 @@ object RootServer {
 
             "deviceSpoof.inspect" -> Sys.deviceIdentity()
 
+            "deviceSpoof.display.read" -> Sys.readRefreshSettings()
+
+            "deviceSpoof.display.setRate" -> Sys.setRefreshRate(request.getDouble("rate"))
+
+            "deviceSpoof.display.restoreRate" -> Sys.restoreRefreshSettings(request.getString("minOriginal"), request.getString("peakOriginal"))
+
             "aosp.state" -> Aosp.state(subId)
 
             "aosp.carriers" -> PhysicalChannels.report(simSlot)

@@ -17,12 +17,13 @@
     <string name="tools_updates">更新</string>
     <string name="tools_device_spoofing">设备身份模拟</string>
     <string name="tools_device_spoof_profile">设备身份模拟 — ROG Phone 6 配置</string>
-    <string name="tools_device_spoof_hint">实验性身份检查，不保证游戏会开放更高帧率。</string>
-    <string name="tools_device_spoof_target">参考配置：ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. 未应用任何配置值。</string>
+    <string name="tools_device_spoof_hint">普通未 Root 设备无法模拟设备身份。此开关仅测试系统支持的屏幕刷新率设置，不会改变游戏读取到的信息。</string>
+    <string name="tools_device_spoof_target">参考配置：ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. 未应用任何身份值。</string>
     <string name="tools_device_spoof_shizuku">Shizuku：%1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">尚未检查</string>
     <string name="tools_device_spoof_checking">正在检查…</string>
     <string name="tools_device_spoof_shizuku_connected">已连接且已授权</string>
+    <string name="tools_device_spoof_service_uid">Shizuku 服务 UID：%1$d（仅允许 shell UID 2000）</string>
     <string name="tools_device_spoof_shizuku_missing">未安装 Shizuku</string>
     <string name="tools_device_spoof_shizuku_stopped">Shizuku 未运行</string>
     <string name="tools_device_spoof_permission_denied">未授予 Shizuku 权限</string>
@@ -30,7 +31,7 @@
     <string name="tools_device_spoof_error">无法检查设备身份</string>
     <string name="tools_device_spoof_idle">尚未运行检查。开关仅反映模拟是否实际生效。</string>
     <string name="tools_device_spoof_success">已验证身份变更。</string>
-    <string name="tools_device_spoof_unsupported">Android 运行期间系统身份属性为只读。未尝试写入，因此功能保持关闭，原始值未改变。</string>
+    <string name="tools_device_spoof_unsupported">Android 运行期间系统身份属性为只读。身份模拟保持未启用且原始值未改变；下方显示设置是独立测试。</string>
     <string name="tools_device_spoof_unverified">无法读取全部身份属性。未进行更改，游戏识别情况未经验证。</string>
     <string name="tools_device_spoof_system_values">原始系统属性（只读）</string>
     <string name="tools_device_spoof_app_values">Bunny Lock 可见的值</string>
@@ -38,7 +39,19 @@
     <string name="tools_device_spoof_supported_hz">支持的显示模式：%1$s Hz</string>
     <string name="tools_device_spoof_rates_unknown">无法读取支持的显示模式</string>
     <string name="tools_device_spoof_refresh">当前屏幕刷新率：%1$s。%2$s。</string>
-    <string name="tools_device_spoof_fps_note">屏幕刷新率不等于游戏 FPS。未测试游戏设备白名单或实际 FPS；任何影响均未经验证。由于没有修改系统值，关闭时无需尝试恢复。</string>
+    <string name="tools_device_spoof_setting_unset">未显式设置（使用系统默认值）</string>
+    <string name="tools_device_spoof_settings">当前最小 / 峰值设置：%1$s / %2$s Hz</string>
+    <string name="tools_device_spoof_original_settings">已保存的原始最小 / 峰值：%1$s / %2$s Hz</string>
+    <string name="tools_device_spoof_select_rate">选择支持的显示模式</string>
+    <string name="tools_device_spoof_screen_toggle">开关：应用或恢复屏幕刷新率偏好</string>
+    <string name="tools_device_spoof_screen_idle">尚未更改显示设置。</string>
+    <string name="tools_device_spoof_screen_applied">系统设置和当前屏幕刷新率均与所选模式一致。</string>
+    <string name="tools_device_spoof_screen_setting_only">已读回系统设置，但当前屏幕刷新率未能确认变更。</string>
+    <string name="tools_device_spoof_screen_unsupported">此设备或 Shizuku shell 会话不支持更改屏幕刷新率设置。</string>
+    <string name="tools_device_spoof_screen_error">无法应用或验证显示设置。</string>
+    <string name="tools_device_spoof_screen_restored">已恢复并验证原始显示设置。</string>
+    <string name="tools_device_spoof_screen_restore_pending">等待恢复。原始值已保存；请重新连接 Shizuku 后恢复。</string>
+    <string name="tools_device_spoof_fps_note">屏幕刷新率不等于游戏 FPS。本功能仅测试系统显示偏好；游戏可能忽略该设置或使用自己的设备名单。未测试游戏内 FPS。关闭时会恢复已保存的系统设置。</string>
     <string name="tools_check_updates">自动检查更新</string>
     <string name="tools_check_updates_hint">启动时在 GitHub 上检查新版本。</string>
 

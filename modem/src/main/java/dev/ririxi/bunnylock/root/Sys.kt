@@ -9,6 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -100,6 +101,39 @@ object Sys {
             properties.put(key, value)
         }
         return JSONObject().put("uid", Os.getuid()).put("properties", properties)
+    }
+
+    fun readRefreshSettings(): JSONObject =
+        JSONObject()
+            .put("minRefreshRate", sh("settings get system min_refresh_rate"))
+            .put("peakRefreshRate", sh("settings get system peak_refresh_rate"))
+
+    fun setRefreshRate(rate: Double): JSONObject {
+        require(rate.isFinite() && rate in 1.0..1000.0) { "Invalid display refresh rate" }
+        val formatted = String.format(Locale.US, "%.2f", rate)
+        sh("settings put system min_refresh_rate $formatted")
+        sh("settings put system peak_refresh_rate $formatted")
+        return readRefreshSettings()
+    }
+
+    fun restoreRefreshSettings(minOriginal: String, peakOriginal: String): JSONObject {
+        restoreRefreshSetting("peak_refresh_rate", peakOriginal)
+        restoreRefreshSetting("min_refresh_rate", minOriginal)
+        return readRefreshSettings()
+    }
+
+    private fun restoreRefreshSetting(
+        key: String,
+        original: String,
+    ) {
+        if (original == "null") {
+            sh("settings delete system $key")
+            return
+        }
+        val rate = original.toDoubleOrNull()
+        require(rate != null && rate.isFinite() && rate in 0.0..1000.0) { "Invalid saved display setting" }
+        val formatted = String.format(Locale.US, "%.2f", rate)
+        sh("settings put system $key $formatted")
     }
 
     /** [qrtr] settles it: a modem that answers QMI over QRTR is Qualcomm's, whatever the properties say. [hints] is lowercase. */
