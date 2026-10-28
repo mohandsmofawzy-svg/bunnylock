@@ -1,8 +1,10 @@
 package dev.ririxi.bunnylock.shizuku
 
 import android.content.Context
+import android.app.ActivityManager
 import android.hardware.display.DisplayManager
 import android.os.Process
+import android.content.pm.PackageManager
 import android.view.Display
 import android.os.Build
 import android.util.Log
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.util.Locale
 
 enum class DeviceSpoofingResult { IDLE, LOADING, SUCCESS, ERROR, UNSUPPORTED, UNVERIFIED }
 
@@ -24,6 +27,8 @@ enum class DeviceSpoofingShizukuStatus { NOT_CHECKED, CHECKING, CONNECTED, NOT_I
 enum class DeviceSpoofingProblem { NONE, SHIZUKU_NOT_INSTALLED, SHIZUKU_NOT_RUNNING, PERMISSION_DENIED, CONNECTION_LOST, NON_SHELL, OTHER }
 
 enum class DeviceDisplayResult { IDLE, CHECKING, APPLIED, SETTING_ONLY, UNSUPPORTED, ERROR, RESTORED, RESTORE_PENDING }
+
+data class InstalledGamePackage(val packageName: String, val versionName: String)
 
 data class DeviceSpoofingState(
     val isOn: Boolean = false,
@@ -43,6 +48,8 @@ data class DeviceSpoofingState(
     val originalPeakRefreshSetting: String? = null,
     val displayResult: DeviceDisplayResult = DeviceDisplayResult.IDLE,
     val restorationPending: Boolean = false,
+    val deviceHardware: Map<String, String> = emptyMap(),
+    val installedPubgPackages: List<InstalledGamePackage> = emptyList(),
 )
 
 /** يفحص الهوية للقراءة فقط ويختبر إعداد معدل الشاشة القابل للتحقق والاستعادة. */
@@ -63,6 +70,8 @@ class DeviceSpoofingController(context: Context) {
                 originalPeakRefreshSetting = preferences.getString(KEY_ORIGINAL_PEAK, null),
                 displayResult = if (pending) DeviceDisplayResult.RESTORE_PENDING else DeviceDisplayResult.IDLE,
                 restorationPending = pending,
+                deviceHardware = basicDeviceInfo(),
+                installedPubgPackages = installedPubgPackages(),
             )
         },
     )
@@ -111,6 +120,7 @@ class DeviceSpoofingController(context: Context) {
 
             val hello = client.start()
             val uid = hello.optInt("uid", -1)
+            // رفض أي helper غير shell؛ صلاحية Shizuku لا تعني أن التطبيق Root.
             if (uid != Process.SHELL_UID) {
                 _state.update {
                     it.copy(
@@ -141,6 +151,8 @@ class DeviceSpoofingController(context: Context) {
                     "Build.MANUFACTURER" to Build.MANUFACTURER.orEmpty(),
                     "Build.VERSION.SDK_INT" to Build.VERSION.SDK_INT.toString(),
                 )
+            val hardwareDetails = basicDeviceInfo() +
+                properties.filterKeys { it in HARDWARE_PROPERTIES }.mapKeys { (key, _) -> key.removePrefix("ro.") }
             val propertiesReadable = listOf("ro.product.model", "ro.product.brand", "ro.product.manufacturer").all { !properties[it].isNullOrBlank() }
             val (currentRate, supportedRates) = displayRates()
             val displaySettings = withContext(Dispatchers.IO) { client.call("deviceSpoof.display.read") }
@@ -159,6 +171,8 @@ class DeviceSpoofingController(context: Context) {
                     problem = DeviceSpoofingProblem.NONE,
                     originalProperties = properties,
                     appBuildValues = buildValues,
+                    deviceHardware = hardwareDetails,
+                    installedPubgPackages = installedPubgPackages(),
                     serviceUid = uid,
                     currentRefreshRate = currentRate,
                     supportedRefreshRates = supportedRates,
@@ -191,6 +205,7 @@ class DeviceSpoofingController(context: Context) {
                 return
             }
 
+            // تُحفظ القيمتان تزامنيًا قبل أول كتابة حتى تبقى الاستعادة ممكنة بعد إغلاق التطبيق.
             val saved = preferences.edit()
                 .putString(KEY_ORIGINAL_MIN, minSetting)
                 .putString(KEY_ORIGINAL_PEAK, peakSetting)
@@ -324,12 +339,21 @@ class DeviceSpoofingController(context: Context) {
 
     fun refreshShizukuStatus() {
         if (_state.value.checking) return
+        val (currentRate, supportedRates) = displayRates()
         val status = when {
             ShizukuClient.installedVersion(appContext) == null -> DeviceSpoofingShizukuStatus.NOT_INSTALLED
             !ShizukuClient.granted() -> DeviceSpoofingShizukuStatus.DISCONNECTED
             else -> DeviceSpoofingShizukuStatus.CONNECTED
         }
-        _state.update { it.copy(shizukuStatus = status) }
+        _state.update {
+            it.copy(
+                shizukuStatus = status,
+                currentRefreshRate = currentRate,
+                supportedRefreshRates = supportedRates,
+                selectedRefreshRate = it.selectedRefreshRate?.takeIf { target -> supportedRates.any { it.closeTo(target) } }
+                    ?: selectedRate(currentRate, supportedRates),
+            )
+        }
     }
 
     private fun fail(status: DeviceSpoofingShizukuStatus, problem: DeviceSpoofingProblem) {
@@ -362,6 +386,34 @@ class DeviceSpoofingController(context: Context) {
             null to emptyList()
         }
 
+    private fun basicDeviceInfo(): Map<String, String> {
+        val memory = appContext.getSystemService(ActivityManager::class.java)?.let { manager ->
+            ActivityManager.MemoryInfo().also(manager::getMemoryInfo).totalMem
+        }
+        return buildMap {
+            put("Model", Build.MODEL.orEmpty())
+            put("Manufacturer", Build.MANUFACTURER.orEmpty())
+            put("Device", Build.DEVICE.orEmpty())
+            put("SoC", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL.orEmpty() else Build.HARDWARE.orEmpty())
+            put("Hardware", Build.HARDWARE.orEmpty())
+            put("CPU ABI", Build.SUPPORTED_ABIS.joinToString(", "))
+            memory?.takeIf { it > 0 }?.let { put("RAM", String.format(Locale.US, "%.1f GB", it / (1024.0 * 1024 * 1024))) }
+        }
+    }
+
+    private fun installedPubgPackages(): List<InstalledGamePackage> =
+        PUBG_PACKAGES.mapNotNull { packageName ->
+            try {
+                val info = appContext.packageManager.getPackageInfo(packageName, 0)
+                InstalledGamePackage(packageName, info.versionName ?: "unknown")
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Could not inspect package $packageName", e)
+                null
+            }
+        }
+
     private fun selectedRate(currentRate: Float?, supportedRates: List<Float>): Float? =
         supportedRates.lastOrNull { currentRate == null || it > currentRate + RATE_EPSILON } ?: supportedRates.maxOrNull()
 
@@ -384,5 +436,7 @@ class DeviceSpoofingController(context: Context) {
         const val KEY_ORIGINAL_MIN = "original_min_refresh_rate"
         const val KEY_ORIGINAL_PEAK = "original_peak_refresh_rate"
         const val RATE_EPSILON = 0.6f
+        val PUBG_PACKAGES = listOf("com.tencent.ig", "com.pubg.imobile", "com.pubg.krmobile", "com.vng.pubgmobile", "com.rekoo.pubgm")
+        val HARDWARE_PROPERTIES = setOf("ro.soc.model", "ro.board.platform", "ro.hardware.egl", "ro.opengles.version")
     }
 }

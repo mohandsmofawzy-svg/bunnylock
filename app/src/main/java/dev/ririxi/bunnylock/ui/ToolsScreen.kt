@@ -362,11 +362,11 @@ fun DeviceSpoofingCard(
     onCheckedChange: (Boolean) -> Unit,
     onRateSelected: (Float) -> Unit,
 ) {
-    SectionHeader(stringResource(R.string.tools_device_spoofing))
+    SectionHeader(stringResource(R.string.tools_pubg_compatibility))
     Panel {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.tools_device_spoof_profile), style = MaterialTheme.typography.titleSmallEmphasized)
+                Text(stringResource(R.string.tools_pubg_compatibility), style = MaterialTheme.typography.titleSmallEmphasized)
                 Text(stringResource(R.string.tools_device_spoof_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.tools_device_spoof_screen_toggle), style = MaterialTheme.typography.labelSmall)
             }
@@ -379,6 +379,20 @@ fun DeviceSpoofingCard(
         state.serviceUid?.let { Text(stringResource(R.string.tools_device_spoof_service_uid, it), style = MaterialTheme.typography.bodySmall) }
         Text(stringResource(state.result.label(state.problem)), style = MaterialTheme.typography.bodyMediumEmphasized)
         Text(stringResource(R.string.tools_device_spoof_target), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Text(stringResource(R.string.tools_pubg_package_heading), style = MaterialTheme.typography.labelLarge)
+        if (state.installedPubgPackages.isEmpty()) {
+            Text(stringResource(R.string.tools_pubg_package_not_found), style = MaterialTheme.typography.bodySmall)
+        } else {
+            state.installedPubgPackages.forEach { game ->
+                Text("${game.packageName} · ${game.versionName}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+        }
+
+        Text(stringResource(R.string.tools_pubg_device_heading), style = MaterialTheme.typography.labelLarge)
+        state.deviceHardware.forEach { (key, value) ->
+            Text("$key: $value", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+        }
 
         if (state.originalProperties.isNotEmpty()) {
             Text(stringResource(R.string.tools_device_spoof_system_values), style = MaterialTheme.typography.labelLarge)
@@ -425,6 +439,8 @@ fun DeviceSpoofingCard(
             )
         }
         Text(stringResource(state.displayResult.label), style = MaterialTheme.typography.bodyMediumEmphasized)
+        Text(stringResource(R.string.tools_pubg_options_unknown), style = MaterialTheme.typography.bodyMediumEmphasized)
+        Text(stringResource(R.string.tools_pubg_manual_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.tools_device_spoof_fps_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

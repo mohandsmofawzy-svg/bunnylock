@@ -16,9 +16,15 @@
 
     <string name="tools_updates">更新</string>
     <string name="tools_device_spoofing">设备身份模拟</string>
-    <string name="tools_device_spoof_profile">设备身份模拟 — ROG Phone 6 配置</string>
+    <string name="tools_pubg_compatibility">PUBG Mobile FPS 兼容性</string>
+    <string name="tools_device_spoof_profile">PUBG MOBILE 设备兼容性</string>
     <string name="tools_device_spoof_hint">普通未 Root 设备无法模拟设备身份。此开关仅测试系统支持的屏幕刷新率设置，不会改变游戏读取到的信息。</string>
     <string name="tools_device_spoof_target">参考配置：ASUS / ASUS_AI2201 / ASUSTeK COMPUTER INC. 未应用任何身份值。</string>
+    <string name="tools_pubg_package_heading">已安装的 PUBG MOBILE 包</string>
+    <string name="tools_pubg_package_not_found">未找到已知的 PUBG MOBILE 包。其他地区版本可能使用不同包名。</string>
+    <string name="tools_pubg_device_heading">设备硬件信息</string>
+    <string name="tools_pubg_options_unknown">90/120 FPS 选项：未知。Android 不会向 Bunny Lock 暴露其他应用的画质菜单。</string>
+    <string name="tools_pubg_manual_steps">手动检查：打开 PUBG MOBILE → 设置 → 画面设置 → 帧率，记录是否显示 90 或 120 FPS 以及当前选项。更改上方屏幕模式后，彻底关闭并重新打开游戏进行对比。请用游戏内 FPS 计数器确认实际帧率；屏幕 Hz 不能作为证明。</string>
     <string name="tools_device_spoof_shizuku">Shizuku：%1$s</string>
     <string name="tools_device_spoof_shizuku_not_checked">尚未检查</string>
     <string name="tools_device_spoof_checking">正在检查…</string>

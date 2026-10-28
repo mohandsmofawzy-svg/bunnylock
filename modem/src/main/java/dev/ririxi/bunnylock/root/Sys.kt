@@ -91,6 +91,10 @@ object Sys {
             "ro.product.manufacturer",
             "ro.product.device",
             "ro.product.name",
+            "ro.soc.model",
+            "ro.board.platform",
+            "ro.hardware.egl",
+            "ro.opengles.version",
         )
         val properties = JSONObject()
         val systemProperties = Class.forName("android.os.SystemProperties")
