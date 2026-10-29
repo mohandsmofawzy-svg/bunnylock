@@ -26,7 +26,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+<<<<<<< HEAD
 import androidx.compose.material3.Text
+=======
+import androidx.compose.material3.Text as MaterialText
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

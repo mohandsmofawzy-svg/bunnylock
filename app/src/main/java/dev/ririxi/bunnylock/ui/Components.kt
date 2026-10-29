@@ -34,7 +34,11 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
+<<<<<<< HEAD
 import androidx.compose.material3.Text
+=======
+import androidx.compose.material3.Text as MaterialText
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.toShape
@@ -318,7 +322,16 @@ fun LockBadge(
                 .clip(style.shape.toShape())
                 .background(containerColor),
         )
+<<<<<<< HEAD
         Icon(style.icon, contentDescription = style.description, tint = style.content, modifier = Modifier.size(size * 0.45f))
+=======
+        Icon(
+            style.icon,
+            contentDescription = translateUiText(style.description, LocalAppLanguage.current),
+            tint = style.content,
+            modifier = Modifier.size(size * 0.45f),
+        )
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     }
 }
 

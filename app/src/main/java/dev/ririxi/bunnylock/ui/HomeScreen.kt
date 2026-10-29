@@ -34,7 +34,11 @@ import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
+<<<<<<< HEAD
 import androidx.compose.material3.Text
+=======
+import androidx.compose.material3.Text as MaterialText
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue

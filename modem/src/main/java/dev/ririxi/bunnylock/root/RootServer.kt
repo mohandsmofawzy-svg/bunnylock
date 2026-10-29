@@ -36,6 +36,10 @@ object RootServer {
         protocolOut.println(hello(nativeLibraryDir).put("ready", true))
 
         val input = System.`in`.bufferedReader()
+<<<<<<< HEAD
+=======
+        // يقرأ أمر JSON واحدًا في كل سطر؛ exit ينهي المساعد بعد انتهاء العميل من عملياته.
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         while (true) {
             val line = input.readLine() ?: break
             if (line.isBlank()) continue

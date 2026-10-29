@@ -25,6 +25,11 @@ import dev.ririxi.bunnylock.modem.reason
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import dev.ririxi.bunnylock.shizuku.ShizukuClient
 import kotlinx.coroutines.CancellationException
+<<<<<<< HEAD
+=======
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,9 +40,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
+<<<<<<< HEAD
 import android.telephony.SubscriptionManager
 import dev.ririxi.bunnylock.watchdog.Watchdog
 
+=======
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 private const val MAX_TOOL_OUTPUT_CHARS = 8000
 
 class MainViewModel(
@@ -48,8 +56,13 @@ class MainViewModel(
     private val _ui =
         MutableStateFlow(
             UiState(
+<<<<<<< HEAD
                 dynamicColor = prefs.getBoolean("dynamicColor", true),
                 checkUpdates = prefs.getBoolean("checkUpdates", true),
+=======
+                checkUpdates = prefs.getBoolean("checkUpdates", true),
+                language = prefs.getString("language", if (java.util.Locale.getDefault().language == "ar") "ar" else "en") ?: "en",
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                 favoriteBands = loadFavoriteBands(),
             ),
         )
@@ -61,6 +74,11 @@ class MainViewModel(
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
 
     private var pendingUnlock = false
+<<<<<<< HEAD
+=======
+    private var exitRequested = false
+    private var updateCheckJob: Job? = null
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
     private val modem =
         ModemController(app, viewModelScope, RootOrShizuku(app, ::shizukuLost), onConnected = ::unlockIfPending, onRefreshed = ::refreshed)
@@ -69,9 +87,15 @@ class MainViewModel(
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
 
     val state =
+<<<<<<< HEAD
         combine(modem.state, _ui, Watchdog.state) { modemState, uiState, watchdog ->
             uiState.copy(modem = modemState, watchdog = watchdog)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value, watchdog = Watchdog.state.value))
+=======
+        combine(modem.state, _ui) { modemState, uiState ->
+            uiState.copy(modem = modemState)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value))
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
     val events = merge(_events, modem.events)
 
@@ -85,8 +109,14 @@ class MainViewModel(
         return runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull()
     }
 
+<<<<<<< HEAD
     private fun checkForUpdate() =
         viewModelScope.launch {
+=======
+    private fun checkForUpdate() {
+        updateCheckJob?.cancel()
+        updateCheckJob = viewModelScope.launch {
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
             if (!ui.checkUpdates) return@launch
             val installed = appVersion() ?: return@launch
             try {
@@ -98,6 +128,10 @@ class MainViewModel(
                 modem.log("Couldn't check for updates. ${reason(e)}")
             }
         }
+<<<<<<< HEAD
+=======
+    }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
     fun dismissUpdate() = updateState { copy(update = null) }
 
@@ -109,7 +143,14 @@ class MainViewModel(
     fun setCheckUpdates(enabled: Boolean) {
         prefs.edit().putBoolean("checkUpdates", enabled).apply()
         updateState { copy(checkUpdates = enabled) }
+<<<<<<< HEAD
         if (enabled) checkForUpdate() else dismissUpdate()
+=======
+        if (enabled) checkForUpdate() else {
+            updateCheckJob?.cancel()
+            dismissUpdate()
+        }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     }
 
     override fun onCleared() {
@@ -117,20 +158,55 @@ class MainViewModel(
         modem.close()
     }
 
+<<<<<<< HEAD
     fun connect() = modem.connect()
 
     /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
     fun resumed() {
         if (modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
+=======
+    fun connect() {
+        if (!exitRequested) modem.connect()
+    }
+
+    /** Coming back from the Shizuku app after allowing bunnylock there shouldn't need a tap on "Try again". */
+    fun resumed() {
+        if (!exitRequested && modem.state.value.root is RootState.Denied && ShizukuClient.granted()) modem.connect()
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     }
 
     private fun shizukuLost() {
         modem.helperLost("The Shizuku service stopped. Try again to restart it.")
     }
 
+<<<<<<< HEAD
     fun refresh() = modem.refresh()
 
     suspend fun refreshConnection(skipCellScan: Boolean = false) = modem.refreshConnection(skipCellScan)
+=======
+    fun refresh() {
+        if (!exitRequested) modem.refresh()
+    }
+
+    suspend fun refreshConnection(skipCellScan: Boolean = false) {
+        if (!exitRequested) modem.refreshConnection(skipCellScan)
+    }
+
+    fun exit(onStopped: () -> Unit) {
+        if (exitRequested) return
+        exitRequested = true
+        stopWatchingShizuku()
+        viewModelScope.launch {
+            try {
+                // ينتظر إنهاء طلب التحديث الملغى كي لا يبقى اتصال شبكي تابع للتطبيق عند الخروج.
+                updateCheckJob?.cancelAndJoin()
+                modem.shutdown()
+            } finally {
+                onStopped()
+            }
+        }
+    }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
     /** "Unlock all" from the notification. Waits for the helper if the app was just started. */
     fun unlockFromNotification() {
@@ -188,9 +264,17 @@ class MainViewModel(
 
     fun setPersist(enabled: Boolean) = modem.setPersist(enabled)
 
+<<<<<<< HEAD
     fun setDynamicColor(enabled: Boolean) {
         prefs.edit().putBoolean("dynamicColor", enabled).apply()
         updateState { copy(dynamicColor = enabled) }
+=======
+    fun setLanguage(language: String) {
+        if (language != "en" && language != "ar") return
+        // يحفظ الخيار فورًا كي يبقى محددًا بعد إعادة إنشاء Activity أو إعادة تشغيل التطبيق.
+        prefs.edit().putString("language", language).apply()
+        updateState { copy(language = language) }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     }
 
     fun setAtNode(node: String) = modem.setAtNode(node)
@@ -200,6 +284,10 @@ class MainViewModel(
         refreshAfter: Boolean = true,
         block: suspend () -> String,
     ) = viewModelScope.launch {
+<<<<<<< HEAD
+=======
+        if (exitRequested || ui.busy) return@launch
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         if (!modem.helperRunning) {
             _events.emit("The helper isn't running, so nothing was changed. Reconnecting.")
             modem.reconnect()
@@ -365,6 +453,7 @@ class MainViewModel(
             message
         }
 
+<<<<<<< HEAD
     fun startWatchdog() {
         try {
             Watchdog.start(getApplication()) {
@@ -379,6 +468,8 @@ class MainViewModel(
 
     fun stopWatchdog() = Watchdog.stop(getApplication())
 
+=======
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     fun samsungMenu() = launchAction(refreshAfter = false) { modem.samsungMenu() }
 
     fun sendAt(command: String) =

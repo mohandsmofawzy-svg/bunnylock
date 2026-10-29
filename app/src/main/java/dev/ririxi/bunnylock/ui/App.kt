@@ -45,7 +45,11 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+<<<<<<< HEAD
 import androidx.compose.material3.Text
+=======
+import androidx.compose.material3.Text as MaterialText
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -77,9 +81,16 @@ import dev.ririxi.bunnylock.modem.Access
 import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.modem.SimInfo
 import kotlinx.coroutines.delay
+<<<<<<< HEAD
 import kotlin.time.Duration.Companion.milliseconds
 
 private val LIVE_REFRESH_PAUSE = 500.milliseconds
+=======
+import kotlin.time.Duration.Companion.seconds
+
+// تقليل الاستطلاع الحي إلى دورة أبطأ يخفف قراءات الخلايا دون المساس بأوامر المودم أو مهلاتها.
+private val LIVE_REFRESH_PAUSE = 1.seconds
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
 enum class Tab(
     val label: String,
@@ -99,7 +110,11 @@ fun BunnyApp(vm: MainViewModel) {
     if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) LiveRefresh(vm)
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+<<<<<<< HEAD
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
+=======
+    LaunchedEffect(state.language) { vm.events.collect { snackbar.showSnackbar(translateUiText(it, state.language)) } }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     var pulledToRefresh by remember { mutableStateOf(false) }
     LaunchedEffect(state.modem.refreshing) { if (!state.modem.refreshing) pulledToRefresh = false }
     // Refreshes the app starts itself, like the one after every change, show in the app bar so the screen doesn't jump.
@@ -114,7 +129,11 @@ fun BunnyApp(vm: MainViewModel) {
                 subtitle = { Text(topBarSubtitle(state)) },
                 actions = {
                     if (state.modem.sims.size > 1) {
+<<<<<<< HEAD
                         SimChip(state.modem.sims, state.modem.sim, enabled = !state.busy, onSelect = vm::setSim)
+=======
+                        SimChip(state.modem.sims, state.modem.sim, enabled = !state.busy && !state.modem.refreshing, onSelect = vm::setSim)
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                     }
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                         when {
@@ -124,7 +143,11 @@ fun BunnyApp(vm: MainViewModel) {
 
                             state.modem.root == RootState.Granted -> {
                                 IconButton(onClick = vm::refresh) {
+<<<<<<< HEAD
                                     Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
+=======
+                                    Icon(Icons.Rounded.Refresh, contentDescription = translateUiText("Refresh", state.language))
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                                 }
                             }
                         }
@@ -280,13 +303,23 @@ private fun SimChip(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val current = sims.firstOrNull { it.slot + 1 == selected } ?: return
+<<<<<<< HEAD
+=======
+    val language = LocalAppLanguage.current
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     Box {
         FilledTonalButton(
             onClick = { expanded = true },
             enabled = enabled,
             shapes = ButtonDefaults.shapes(),
             contentPadding = PaddingValues(start = 8.dp, end = 6.dp),
+<<<<<<< HEAD
             modifier = Modifier.semantics { contentDescription = "SIM $selected, ${current.name}. Switch SIM" },
+=======
+            modifier = Modifier.semantics {
+                contentDescription = translateUiText("SIM $selected, ${current.name}. Switch SIM", language)
+            },
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         ) {
             SimNumber(selected)
             Spacer(Modifier.width(8.dp))
@@ -299,7 +332,11 @@ private fun SimChip(
                 DropdownMenuItem(
                     text = { Text("SIM $number: ${sim.name}") },
                     leadingIcon = { SimNumber(number) },
+<<<<<<< HEAD
                     trailingIcon = { if (number == selected) Icon(Icons.Rounded.Check, contentDescription = "Selected") },
+=======
+                    trailingIcon = { if (number == selected) Icon(Icons.Rounded.Check, contentDescription = translateUiText("Selected", LocalAppLanguage.current)) },
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                     onClick = {
                         expanded = false
                         if (number != selected) onSelect(number)

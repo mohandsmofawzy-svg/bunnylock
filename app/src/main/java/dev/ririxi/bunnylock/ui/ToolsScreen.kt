@@ -2,6 +2,10 @@
 
 package dev.ririxi.bunnylock.ui
 
+<<<<<<< HEAD
+=======
+import android.app.Activity
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
@@ -19,6 +23,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
+<<<<<<< HEAD
+=======
+import androidx.compose.material.icons.rounded.Close
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
@@ -33,7 +41,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
+<<<<<<< HEAD
 import androidx.compose.material3.Text
+=======
+import androidx.compose.material3.Text as MaterialText
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,7 +64,10 @@ import androidx.compose.ui.unit.dp
 import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.DeviceInfo
 import dev.ririxi.bunnylock.modem.andList
+<<<<<<< HEAD
 import dev.ririxi.bunnylock.ui.theme.dynamicColorAvailable
+=======
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
 
 private val AT_COMMAND_PRESETS = listOf("ATI", "AT+EPBSE?", "AT+EPBSEH?", "AT+EMMCHLCK?", "AT+GOOGGETNV=\"NR.CONFIG.MODE\"")
 
@@ -68,6 +83,10 @@ fun ToolsScreen(
     var qmiMessage by rememberSaveable { mutableStateOf("004D") }
     var qmiPayload by rememberSaveable { mutableStateOf("") }
     var checkedServicesOpen by rememberSaveable { mutableStateOf(false) }
+<<<<<<< HEAD
+=======
+    val context = LocalContext.current
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     val arrowAngle by animateFloatAsState(if (checkedServicesOpen) 180f else 0f, label = "arrow")
 
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -87,7 +106,11 @@ fun ToolsScreen(
                         SegmentedListItem(
                             selected = selected,
                             onClick = { vm.setBackend(backend) },
+<<<<<<< HEAD
                             enabled = !needsRoot,
+=======
+                            enabled = !needsRoot && !state.busy && !state.modem.refreshing,
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                             shapes = shapes,
                             colors = segmentColors(),
                             supportingContent = if (hint !== null) ({ Text(hint) }) else null,
@@ -102,6 +125,10 @@ fun ToolsScreen(
                             "Keep band locks after reboot",
                             "When this is off, locks are cleared on reboot.",
                             checked = state.modem.persist,
+<<<<<<< HEAD
+=======
+                            enabled = !state.busy && !state.modem.refreshing,
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                             onCheckedChange = vm::setPersist,
                         )
                     }
@@ -109,6 +136,7 @@ fun ToolsScreen(
             }
         }
 
+<<<<<<< HEAD
         if (dynamicColorAvailable) {
             item {
                 SectionHeader("Appearance")
@@ -124,6 +152,19 @@ fun ToolsScreen(
                     }
                 }
             }
+=======
+        item {
+            SectionHeader("Language")
+            ConnectedChoice(
+                options = listOf("en", "ar"),
+                selected = state.language,
+                label = { if (it == "ar") "العربية" else "English" },
+                onSelect = { language ->
+                    vm.setLanguage(language)
+                    (context as? Activity)?.recreate()
+                },
+            )
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
         }
 
         item {
@@ -199,6 +240,10 @@ fun ToolsScreen(
                     vm::setAtNode,
                     label = { Text("AT port") },
                     singleLine = true,
+<<<<<<< HEAD
+=======
+                    enabled = !state.busy && !state.modem.refreshing,
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = { Text(atNodesHint(state.modem.device)) },
                 )
@@ -212,7 +257,11 @@ fun ToolsScreen(
                         IconButton(
                             onClick = { if (atCommand.isNotBlank()) vm.sendAt(atCommand.trim()) },
                             enabled = !state.busy && state.modem.atNode.isNotBlank(),
+<<<<<<< HEAD
                         ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send") }
+=======
+                        ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                     },
                 )
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,7 +307,11 @@ fun ToolsScreen(
                                     if (service !== null && message !== null) vm.sendQmi(service, message, qmiPayload)
                                 },
                                 enabled = !state.busy,
+<<<<<<< HEAD
                             ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send") }
+=======
+                            ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                         },
                     )
                 }
@@ -305,7 +358,11 @@ fun ToolsScreen(
                                 trailingContent = {
                                     Icon(
                                         Icons.Rounded.KeyboardArrowDown,
+<<<<<<< HEAD
                                         contentDescription = if (checkedServicesOpen) "Collapse" else "Expand",
+=======
+                                        contentDescription = translateUiText(if (checkedServicesOpen) "Collapse" else "Expand", state.language),
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
                                         modifier = Modifier.rotate(arrowAngle),
                                     )
                                 },
@@ -337,6 +394,25 @@ fun ToolsScreen(
         }
 
         item {
+<<<<<<< HEAD
+=======
+            SectionHeader("Application")
+            Segmented {
+                item {
+                    ActionItem(
+                        it,
+                        "Exit",
+                        "Stop app tasks and close safely.",
+                        Icons.Rounded.Close,
+                        enabled = true,
+                        onClick = { vm.exit { (context as? Activity)?.finishAndRemoveTask() } },
+                    )
+                }
+            }
+        }
+
+        item {
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
             SectionHeader("About")
             About()
         }
@@ -435,15 +511,27 @@ private fun SwitchItem(
     title: String,
     subtitle: String,
     checked: Boolean,
+<<<<<<< HEAD
+=======
+    enabled: Boolean = true,
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     onCheckedChange: (Boolean) -> Unit,
 ) {
     SegmentedListItem(
         checked = checked,
         onCheckedChange = onCheckedChange,
+<<<<<<< HEAD
         shapes = shapes,
         colors = segmentColors(),
         supportingContent = { Text(subtitle) },
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+=======
+        enabled = enabled,
+        shapes = shapes,
+        colors = segmentColors(),
+        supportingContent = { Text(subtitle) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+>>>>>>> 1f1c3fc2ddb001caec522b01498a9ab0a4e36bb1
     ) { Text(title) }
 }
 
