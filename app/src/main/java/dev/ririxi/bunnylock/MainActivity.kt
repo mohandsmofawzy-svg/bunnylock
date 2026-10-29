@@ -44,7 +44,6 @@ class MainActivity : ComponentActivity() {
         }
         super.attachBaseContext(newBase.createConfigurationContext(configuration))
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)

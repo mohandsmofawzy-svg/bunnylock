@@ -25,7 +25,9 @@ abstract class HelperClient(
     private val context: Context,
     private val name: String,
 ) : PrivilegedClient {
+    @Volatile
     private var process: Process? = null
+    @Volatile
     private var writer: BufferedWriter? = null
     // يربط كل رقم طلب برده حتى لا تختلط نتائج الأوامر المتزامنة.
     private val pendingReplies = ConcurrentHashMap<Int, CompletableDeferred<JSONObject>>()
@@ -144,6 +146,7 @@ abstract class HelperClient(
         return response.optJSONObject("data") ?: JSONObject()
     }
 
+    @Synchronized
     override fun stop() {
         // أرسل exit ثم أغلق الأنابيب وأكمل الطلبات المنتظرة كي لا تبقى مهام الواجهة معلقة.
         val activeProcess = process

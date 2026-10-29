@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
+// تثبيت الأسود للخلفية والنبيتي للأزرار يمنع تبدل الهوية مع ألوان النظام.
 private val DarkColors =
     darkColorScheme(
         primary = Color(0xFFB3435A),
@@ -46,21 +47,17 @@ private val DarkColors =
         surfaceContainerHighest = Color(0xFF2B2225),
     )
 
-    private val LockGreenOnDark = Color(0xFFFFA9B8)
+private val LockGreen = Color(0xFF5BE584)
+private val SignalScale = listOf(LockGreen, Color(0xFFC3E35A), Color(0xFFFFB95C), Color(0xFFFF8A7E))
 
-val LocalLockGreen = staticCompositionLocalOf { LockGreenOnLight }
-
-private val SignalScaleOnDark = listOf(Color(0xFF5BE584), Color(0xFFC3E35A), Color(0xFFFFB95C), Color(0xFFFF8A7E))
-
-val LocalSignalScale = staticCompositionLocalOf { SignalScaleOnDark }
+val LocalLockGreen = staticCompositionLocalOf { LockGreen }
+val LocalSignalScale = staticCompositionLocalOf { SignalScale }
 
 @Composable
-fun BunnyTheme(
-    content: @Composable () -> Unit,
-) {
+fun BunnyTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalLockGreen provides LockGreenOnDark,
-        LocalSignalScale provides SignalScaleOnDark,
+        LocalLockGreen provides LockGreen,
+        LocalSignalScale provides SignalScale,
     ) {
         MaterialExpressiveTheme(
             colorScheme = DarkColors,

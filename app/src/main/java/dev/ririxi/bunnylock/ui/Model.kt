@@ -6,6 +6,7 @@ import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.Group
 import dev.ririxi.bunnylock.modem.LockRat
 import dev.ririxi.bunnylock.modem.ModemState
+import dev.ririxi.bunnylock.watchdog.WatchdogState
 
 val Group.favoritesKey: String
     get() =
@@ -43,6 +44,7 @@ data class UiState(
     val toolOutput: String = "",
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
+    val watchdog: WatchdogState = WatchdogState(),
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

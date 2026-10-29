@@ -24,6 +24,7 @@ import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.modem.reason
 import dev.ririxi.bunnylock.shizuku.RootOrShizuku
 import dev.ririxi.bunnylock.shizuku.ShizukuClient
+import dev.ririxi.bunnylock.watchdog.Watchdog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -36,7 +37,9 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
+import android.telephony.SubscriptionManager
 private const val MAX_TOOL_OUTPUT_CHARS = 8000
 
 class MainViewModel(
@@ -70,9 +73,9 @@ class MainViewModel(
     private val stopWatchingShizuku = ShizukuClient.onBinderReceived(modem::reconnect)
 
     val state =
-        combine(modem.state, _ui) { modemState, uiState ->
-            uiState.copy(modem = modemState)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value))
+        combine(modem.state, _ui, Watchdog.state) { modemState, uiState, watchdog ->
+            uiState.copy(modem = modemState, watchdog = watchdog)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ui.copy(modem = modem.state.value, watchdog = Watchdog.state.value))
 
     val events = merge(_events, modem.events)
 
@@ -120,6 +123,7 @@ class MainViewModel(
 
     override fun onCleared() {
         stopWatchingShizuku()
+        runCatching { Watchdog.stop(getApplication()) }
         modem.close()
     }
 
@@ -148,10 +152,12 @@ class MainViewModel(
         if (exitRequested) return
         exitRequested = true
         stopWatchingShizuku()
+        runCatching { Watchdog.stop(getApplication()) }
         viewModelScope.launch {
             try {
                 // ينتظر إنهاء طلب التحديث الملغى كي لا يبقى اتصال شبكي تابع للتطبيق عند الخروج.
                 updateCheckJob?.cancelAndJoin()
+                withContext(kotlinx.coroutines.Dispatchers.IO) { prefs.edit().commit() }
                 modem.shutdown()
             } finally {
                 onStopped()
@@ -161,6 +167,7 @@ class MainViewModel(
 
     /** "Unlock all" from the notification. Waits for the helper if the app was just started. */
     fun unlockFromNotification() {
+        if (exitRequested) return
         if (modem.state.value.root == RootState.Granted && modem.helperRunning) unlockEverything() else pendingUnlock = true
     }
 
@@ -394,6 +401,21 @@ class MainViewModel(
             }
             message
         }
+
+    fun startWatchdog() {
+        if (exitRequested) return
+        try {
+            Watchdog.start(getApplication()) {
+                val modemState = modem.state.value
+                modemState.sims.firstOrNull { it.slot == modemState.sim - 1 }?.subId
+                    ?: SubscriptionManager.getDefaultSubscriptionId()
+            }
+        } catch (e: Exception) {
+            _events.tryEmit(reason(e))
+        }
+    }
+
+    fun stopWatchdog() = Watchdog.stop(getApplication())
 
     fun samsungMenu() = launchAction(refreshAfter = false) { modem.samsungMenu() }
 

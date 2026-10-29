@@ -34,7 +34,6 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.toShape
@@ -226,7 +225,11 @@ fun <T> ToggleGrid(
                 checkedContentColor = scheme.onTertiary,
             )
         } else {
-            ToggleButtonDefaults.colors(containerColor = scheme.surfaceContainerHighest)
+            ToggleButtonDefaults.colors(
+                containerColor = scheme.surfaceContainerHighest,
+                checkedContainerColor = scheme.primary,
+                checkedContentColor = scheme.onPrimary,
+            )
         }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.chunked(columns).forEach { row ->

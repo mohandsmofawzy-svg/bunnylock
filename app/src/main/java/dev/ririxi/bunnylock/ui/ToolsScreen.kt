@@ -35,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -345,7 +344,7 @@ fun ToolsScreen(
                         "Exit",
                         "Stop app tasks and close safely.",
                         Icons.Rounded.Close,
-                        enabled = true,
+                        enabled = !state.busy && !state.modem.refreshing,
                         onClick = { vm.exit { (context as? Activity)?.finishAndRemoveTask() } },
                     )
                 }
