@@ -2,14 +2,10 @@ package dev.ririxi.bunnylock.root
 
 import android.os.Build
 import android.system.Os
-import dev.ririxi.bunnylock.modem.R
-import dev.ririxi.bunnylock.modem.Text
-import dev.ririxi.bunnylock.modem.toJson
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -79,65 +75,8 @@ object Sys {
             .put("aospNrDc", runCatching { Aosp.nrDcConfigurable() }.getOrDefault(false))
             .put("mtkOemHook", runCatching { OemHook.available() }.getOrDefault(false))
             .put("samsungNrMode", runCatching { Samsung.nrModeAvailable() }.getOrDefault(false))
-            .put("mtkOemHookStatus", runCatching { OemHook.status() }.getOrElse { it.toText() }.toJson())
-            .put("mtkOemHookChecked", JSONArray(runCatching { OemHook.diagnostics() }.getOrDefault(emptyList()).map { it.toJson() }))
-    }
-
-    /** يقرأ خصائص الهوية فقط؛ لا يكتب خصائص ro.* المحمية. */
-    fun deviceIdentity(): JSONObject {
-        val keys = listOf(
-            "ro.product.model",
-            "ro.product.brand",
-            "ro.product.manufacturer",
-            "ro.product.device",
-            "ro.product.name",
-            "ro.soc.model",
-            "ro.board.platform",
-            "ro.hardware.egl",
-            "ro.opengles.version",
-        )
-        val properties = JSONObject()
-        val systemProperties = Class.forName("android.os.SystemProperties")
-        val getProperty = systemProperties.getMethod("get", String::class.java)
-        keys.forEach { key ->
-            val value = getProperty.invoke(null, key) as? String
-                ?: throw IllegalStateException("System property $key returned no value")
-            properties.put(key, value)
-        }
-        return JSONObject().put("uid", Os.getuid()).put("properties", properties)
-    }
-
-    fun readRefreshSettings(): JSONObject =
-        JSONObject()
-            .put("minRefreshRate", sh("settings get system min_refresh_rate"))
-            .put("peakRefreshRate", sh("settings get system peak_refresh_rate"))
-
-    fun setRefreshRate(rate: Double): JSONObject {
-        require(rate.isFinite() && rate in 1.0..1000.0) { "Invalid display refresh rate" }
-        val formatted = String.format(Locale.US, "%.2f", rate)
-        sh("settings put system min_refresh_rate $formatted")
-        sh("settings put system peak_refresh_rate $formatted")
-        return readRefreshSettings()
-    }
-
-    fun restoreRefreshSettings(minOriginal: String, peakOriginal: String): JSONObject {
-        restoreRefreshSetting("peak_refresh_rate", peakOriginal)
-        restoreRefreshSetting("min_refresh_rate", minOriginal)
-        return readRefreshSettings()
-    }
-
-    private fun restoreRefreshSetting(
-        key: String,
-        original: String,
-    ) {
-        if (original == "null") {
-            sh("settings delete system $key")
-            return
-        }
-        val rate = original.toDoubleOrNull()
-        require(rate != null && rate.isFinite() && rate in 0.0..1000.0) { "Invalid saved display setting" }
-        val formatted = String.format(Locale.US, "%.2f", rate)
-        sh("settings put system $key $formatted")
+            .put("mtkOemHookStatus", runCatching { OemHook.status() }.getOrElse { it.message.orEmpty() })
+            .put("mtkOemHookChecked", JSONArray(runCatching { OemHook.diagnostics() }.getOrDefault(emptyList())))
     }
 
     /** [qrtr] settles it: a modem that answers QMI over QRTR is Qualcomm's, whatever the properties say. [hints] is lowercase. */
@@ -173,10 +112,8 @@ object Sys {
             failures += failureLine(output)
         }
         val denied = failures.firstOrNull { "Permission Denial" in it }
-        if (denied !== null) fail(R.string.aosp_with_details, Text(R.string.sys_samsung_menu_denied), denied)
-        val details = failures.filter { it.isNotEmpty() }.joinToString(" / ")
-        if (details.isEmpty()) fail(R.string.sys_samsung_menu_missing)
-        fail(R.string.aosp_with_details, Text(R.string.sys_samsung_menu_missing), details)
+        check(denied === null) { "This phone only lets Samsung's own apps open its band menu, so it needs root ($denied)." }
+        throw IllegalStateException(failures.joinToString(" / ").ifEmpty { "Couldn't find the Samsung band menu on this phone." })
     }
 
     private fun failureLine(amStartOutput: String): String {

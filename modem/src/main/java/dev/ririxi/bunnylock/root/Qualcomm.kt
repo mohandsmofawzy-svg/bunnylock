@@ -1,11 +1,7 @@
 package dev.ririxi.bunnylock.root
 
-import androidx.annotation.StringRes
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.core.toIntList
-import dev.ririxi.bunnylock.modem.R
-import dev.ririxi.bunnylock.modem.Text
-import dev.ririxi.bunnylock.modem.toJson
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -13,8 +9,8 @@ import java.io.ByteArrayOutputStream
 /**
  * Band and cell locks apply live, without a modem restart.
  *
- * NAS message, TLV and enum ids follow Qualcomm's NAS IDL (network_access_service_v01, version 1.0x190).
- * DMS ids and QMI error codes follow libqmi.
+ * Ids follow libqmi's NAS definitions. The NR SA/NSA masks, NR mode and cell-lock messages
+ * (0x00D7/0x00D8/0x010E/0x010F) come from the field-tested qcom-band-menu project.
  */
 object Qualcomm {
     // QMI services: device management and network access.
@@ -35,7 +31,6 @@ object Qualcomm {
     private const val NAS_LTE_LOCK_SET = 0x00D8
     private const val NAS_NR_LOCK_SET = 0x010E
     private const val NAS_NR_LOCK_GET = 0x010F
-    private const val NAS_LTE_LOCK_GET_FULL_EARFCN = 0x015A
     private const val DMS_SET_OPERATING_MODE = 0x002E
     private const val DMS_GET_BAND_CAPABILITIES = 0x0045
 
@@ -61,27 +56,19 @@ object Qualcomm {
     private const val TLV_SSP_MANUAL_PLMN_GET = 0x1B
     private const val TLV_SSP_LTE_EXT_BANDS_GET = 0x23
     private const val TLV_SSP_LTE_EXT_BANDS_SET = 0x24
-    private const val TLV_SSP_NR_BANDS_GET = 0x28
-    private const val TLV_SSP_NR_BANDS_SET = 0x2B
-    private const val TLV_SSP_NR_MODE_GET = 0x2B
+    private const val TLV_SSP_NR_COMBINED = 0x2B
     private const val TLV_SSP_NR_SA_BANDS_GET = 0x2C
     private const val TLV_SSP_NR_NSA_BANDS_GET = 0x2D
-    private const val TLV_SSP_NR_MODE_SET = 0x2E
+    private const val TLV_SSP_NR_MODE = 0x2E
     private const val TLV_SSP_NR_SA_BANDS_SET = 0x2F
     private const val TLV_SSP_NR_NSA_BANDS_SET = 0x30
 
-    // NAS_LTE_LOCK_GET, NAS_LTE_LOCK_GET_FULL_EARFCN and NAS_LTE_LOCK_SET
+    // NAS_LTE_LOCK_GET and NAS_LTE_LOCK_SET
     private const val TLV_LTE_LOCK_GET_CELLS = 0x10
-    private const val TLV_LTE_LOCK_GET_FULL_EARFCN_CELLS = 0x10
     private const val TLV_LTE_LOCK_SET_CELLS = 0x01
 
     // Asks the modem to apply the lock without a restart.
     private const val TLV_LTE_LOCK_SET_ENFORCE = 0x10
-
-    // The IDL allows 60 cells in one lock. Older modems take 20 and answer more with ERR_ARG_TOO_LONG.
-    private const val LTE_LOCK_MAX_CELLS = 60
-    private const val LTE_LOCK_MAX_CELLS_OLD_MODEMS = 20
-    private const val ERR_ARG_TOO_LONG = 0x13
 
     // The modem's answer when LTE is active and it only changes the cell lock with LTE off.
     private const val ERR_INCOMPATIBLE_STATE = 0x5A
@@ -92,11 +79,12 @@ object Qualcomm {
     private const val TLV_NR_LOCK_GET_TYPE = 0x10
     private const val TLV_NR_LOCK_GET_PCI_CELL = 0x11
     private const val TLV_NR_LOCK_GET_ARFCNS = 0x12
-    private const val TLV_NR_LOCK_GET_MULTI_PCI = 0x13
+    private const val TLV_NR_LOCK_GET_GNBS = 0x14
     private const val TLV_NR_LOCK_SET_TYPE = 0x01
     private const val TLV_NR_LOCK_SET_PCI_CELL = 0x10
     private const val TLV_NR_LOCK_SET_ARFCNS = 0x11
     private const val TLV_NR_LOCK_SET_MULTI_PCI = 0x12
+    private const val TLV_NR_LOCK_SET_GNBS = 0x13
 
     // NAS_GET_SYS_INFO
     private const val TLV_SYS_INFO_ENDC_AVAILABLE = 0x4E
@@ -128,48 +116,16 @@ object Qualcomm {
             add(17)
             addAll(33..40)
             addAll(18..21)
-            addAll(listOf(24, 25, 41, 42, 43, 23, 26, 32, 125, 126, 127, 28, 29, 30, 66, 250, 46, 27, 31, 71, 47, 48))
-            addAll(listOf(67, 68, 49, 85, 72, 73, 86, 53, 87, 88, 70, 44, 256, 106))
+            addAll(listOf(24, 25, 41, 42, 43, 23, 26, 32, 125, 126, 127, 28, 29, 30, 66, 250, 46, 27, 31, 47, 48, 71))
         }
     private const val QMI_FIRST_LTE_BAND = 120
 
     /** The 5G bands QMI numbers from 250 up. */
     private val QMI_NR_BANDS =
         buildList {
-            addAll(
-                listOf(
-                    1,
-                    2,
-                    3,
-                    5,
-                    7,
-                    8,
-                    20,
-                    28,
-                    38,
-                    41,
-                    50,
-                    51,
-                    66,
-                    70,
-                    71,
-                    74,
-                    75,
-                    76,
-                    77,
-                    78,
-                    79,
-                    80,
-                    81,
-                    82,
-                    83,
-                    84,
-                    85
-                )
-            )
+            addAll(listOf(1, 2, 3, 5, 7, 8, 20, 28, 38, 41, 50, 51, 66, 70, 71, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85))
             addAll(257..261)
             addAll(listOf(12, 25, 34, 39, 40, 65, 86, 48, 14, 13, 18, 26, 30, 29, 53, 46, 91, 92, 93, 94))
-            addAll(listOf(96, 106, 67, 68, 89, 95, 97, 98, 99, 104, 47, 102, 105))
         }
     private const val QMI_FIRST_NR_BAND = 250
     private const val RADIO_INTERFACE_NR = 0x0C
@@ -190,7 +146,7 @@ object Qualcomm {
     private const val NR_LOCK_TYPE_ARFCN = 1
     private const val NR_LOCK_TYPE_NONE = 2
     private const val NR_LOCK_TYPE_MULTI_PCI = 3
-    private const val NR_LOCK_MAX_PCIS_PER_FREQUENCY = 8
+    private const val NR_LOCK_TYPE_GNB = 4
 
     private const val PS_ATTACH = 1
     private const val PS_DETACH = 2
@@ -254,7 +210,7 @@ object Qualcomm {
             if (sim >= 1) {
                 // Subscription type: 0 primary, 1 secondary.
                 val bind = client.send(NAS_BIND_SUBSCRIPTION, Tlvs().u8(TLV_BIND_SUBSCRIPTION_TYPE, sim - 1))
-                if (!bind.ok && sim > 1) fail(R.string.qc_sim_switch_failed, sim, QmiResponse.errorName(bind.error))
+                if (!bind.ok && sim > 1) throw QmiException("The modem wouldn't switch to SIM $sim: ${QmiResponse.errorName(bind.error)}.")
             }
             block(client)
         }
@@ -262,13 +218,11 @@ object Qualcomm {
     /** Starts a NAS_SET_SSP request. Every change says whether it is permanent (1) or only lasts until the modem restarts (0). */
     private fun sspRequest(persist: Boolean) = Tlvs().u8(TLV_SSP_CHANGE_DURATION, if (persist) 1 else 0)
 
-    private fun legacyToGsm(mask: Long) =
-        GSM_BITS.filter { (_, bits) -> bits.any { mask and (1L shl it) != 0L } }.keys.sorted()
+    private fun legacyToGsm(mask: Long) = GSM_BITS.filter { (_, bits) -> bits.any { mask and (1L shl it) != 0L } }.keys.sorted()
 
     private fun legacyToWcdma(mask: Long) = WCDMA_BITS.filter { (_, bit) -> mask and (1L shl bit) != 0L }.keys.sorted()
 
-    private fun QmiResponse.legacyBandMask(tlvId: Int): Long? =
-        tlv(tlvId)?.takeIf { it.size >= 8 }?.let { Reader(it).u64() }
+    private fun QmiResponse.legacyBandMask(tlvId: Int): Long? = tlv(tlvId)?.takeIf { it.size >= 8 }?.let { Reader(it).u64() }
 
     private fun u16List(value: ByteArray): List<Int> {
         val reader = Reader(value)
@@ -277,7 +231,7 @@ object Qualcomm {
 
     private fun scsEnum(khz: Int): Int {
         val index = SCS_KHZ.indexOf(khz)
-        if (index < 0) fail(R.string.qc_invalid_scs, khz)
+        if (index < 0) throw QmiException("$khz kHz isn't a valid subcarrier spacing.")
         return index
     }
 
@@ -291,12 +245,11 @@ object Qualcomm {
 
     private fun hardwareBands(): HardwareBands =
         QmiClient(DMS).use { client ->
-            val response = client.send(DMS_GET_BAND_CAPABILITIES).check(R.string.qc_op_band_caps_query)
+            val response = client.send(DMS_GET_BAND_CAPABILITIES).check("the band capability query")
             val legacyMask = response.legacyBandMask(TLV_CAPS_LEGACY_BANDS) ?: 0L
             // The LTE mask stops at band 64. The extended TLV is a list of band numbers instead.
             val lte = sortedSetOf<Int>()
-            response.tlv(TLV_CAPS_LTE_BANDS)?.takeIf { it.size >= LTE_MASK_BYTES }
-                ?.let { lte += Bands.fromMask(it.copyOf(LTE_MASK_BYTES)) }
+            response.tlv(TLV_CAPS_LTE_BANDS)?.takeIf { it.size >= LTE_MASK_BYTES }?.let { lte += Bands.fromMask(it.copyOf(LTE_MASK_BYTES)) }
             response.tlv(TLV_CAPS_LTE_EXT_BANDS)?.let { lte += u16List(it) }
             val nr = sortedSetOf<Int>()
             response.tlv(TLV_CAPS_NR_BANDS)?.let { nr += u16List(it) }
@@ -317,7 +270,7 @@ object Qualcomm {
             )
         }
         nas(sim) { client ->
-            putSystemSelection(client.send(NAS_GET_SSP).check(R.string.qc_op_ssp_query), out)
+            putSystemSelection(client.send(NAS_GET_SSP).check("the system selection query"), out)
             runCatching { out.put("lteLock", lteLockState(client)) }
             runCatching { out.put("nrLock", nrLockState(client)) }
         }
@@ -336,16 +289,13 @@ object Qualcomm {
             response.tlv(TLV_SSP_LTE_EXT_BANDS_GET)?.takeIf { it.size >= LTE_EXT_MASK_BYTES }
                 ?: response.tlv(TLV_SSP_LTE_BANDS)?.takeIf { it.size >= LTE_MASK_BYTES }
         lteMask?.let { out.put("lte", JSONArray(Bands.fromMask(it))) }
-        response.tlv(TLV_SSP_NR_SA_BANDS_GET)?.takeIf { it.size >= NR_MASK_BYTES }
-            ?.let { out.put("nrSa", JSONArray(Bands.fromMask(it))) }
-        response.tlv(TLV_SSP_NR_NSA_BANDS_GET)?.takeIf { it.size >= NR_MASK_BYTES }
-            ?.let { out.put("nrNsa", JSONArray(Bands.fromMask(it))) }
-        response.tlv(TLV_SSP_NR_BANDS_GET)?.takeIf { it.size >= NR_MASK_BYTES }
-            ?.let { out.put("nr", JSONArray(Bands.fromMask(it))) }
-        // 0 allows SA and NSA, 1 disables SA, 2 disables NSA.
-        response.tlv(TLV_SSP_NR_MODE_GET)?.takeIf { it.size == 4 }?.let { out.put("nrMode", Reader(it).i32()) }
-        // On GET the IDL puts only the mode (0 automatic, 1 manual) here and the PLMN in TLV_SSP_MANUAL_PLMN_GET.
-        // A longer value is read as mode, MCC and MNC, the layout SET uses.
+        response.tlv(TLV_SSP_NR_SA_BANDS_GET)?.takeIf { it.size >= NR_MASK_BYTES }?.let { out.put("nrSa", JSONArray(Bands.fromMask(it))) }
+        response.tlv(TLV_SSP_NR_NSA_BANDS_GET)?.takeIf { it.size >= NR_MASK_BYTES }?.let { out.put("nrNsa", JSONArray(Bands.fromMask(it))) }
+        // On GET this TLV is either the NR mode (4 bytes: 0 both, 1 NSA only, 2 SA only) or the combined NR band mask.
+        response.tlv(TLV_SSP_NR_COMBINED)?.takeIf { it.size == 4 }?.let { out.put("nrMode", it[0].toInt() and 0xFF) }
+        response.tlv(TLV_SSP_NR_COMBINED)?.takeIf { it.size == NR_MASK_BYTES }?.let { out.put("nr", JSONArray(Bands.fromMask(it))) }
+        // Mode (0 automatic, 1 manual), MCC, MNC. Some firmware returns only the mode byte here,
+        // and the PLMN then comes from TLV_SSP_MANUAL_PLMN_GET.
         response.tlv(TLV_SSP_NETWORK_SELECTION)?.takeIf { it.isNotEmpty() }?.let {
             val reader = Reader(it)
             val selection = JSONObject().put("mode", reader.u8())
@@ -355,51 +305,26 @@ object Qualcomm {
         // MCC, MNC, whether the MNC has 3 digits.
         response.tlv(TLV_SSP_MANUAL_PLMN_GET)?.takeIf { it.size >= 5 }?.let {
             val reader = Reader(it)
-            out.put(
-                "manualPlmn",
-                JSONObject().put("mcc", reader.u16()).put("mnc", reader.u16()).put("pcs", reader.u8() != 0)
-            )
+            out.put("manualPlmn", JSONObject().put("mcc", reader.u16()).put("mnc", reader.u16()).put("pcs", reader.u8() != 0))
         }
     }
 
-    /** Only newer modems know NAS_LTE_LOCK_GET_FULL_EARFCN. NAS_LTE_LOCK_GET reads EARFCNs back as 16 bits even though SET takes 32. */
     private fun lteLockState(client: QmiClient): JSONObject {
-        val fullEarfcnResponse = runCatching { client.send(NAS_LTE_LOCK_GET_FULL_EARFCN) }.getOrNull()?.takeIf { it.ok }
-        val cells =
-            if (fullEarfcnResponse !== null) {
-                lteLockCells(fullEarfcnResponse.tlv(TLV_LTE_LOCK_GET_FULL_EARFCN_CELLS), fullEarfcn = true)
-            } else {
-                val response = client.send(NAS_LTE_LOCK_GET).check(R.string.qc_op_lte_cell_lock_query)
-                lteLockCells(response.tlv(TLV_LTE_LOCK_GET_CELLS), fullEarfcn = false)
-            }
-        return JSONObject()
-            .put("active", cells.length() > 0)
-            .put("cells", cells)
-            .put("earfcnTruncated", fullEarfcnResponse === null)
-    }
-
-    private fun lteLockCells(
-        value: ByteArray?,
-        fullEarfcn: Boolean,
-    ): JSONArray {
+        val response = client.send(NAS_LTE_LOCK_GET).check("the LTE cell lock query")
         val cells = JSONArray()
-        if (value === null) return cells
-        val reader = Reader(value)
-        val bytesPerCell = if (fullEarfcn) 6 else 4
-        repeat(reader.u8()) {
-            if (reader.remaining >= bytesPerCell) {
-                val pci = reader.u16()
-                val earfcn = if (fullEarfcn) reader.u32() else reader.u16().toLong()
-                cells.put(JSONObject().put("pci", pci).put("earfcn", earfcn))
+        response.tlv(TLV_LTE_LOCK_GET_CELLS)?.let { value ->
+            val reader = Reader(value)
+            // EARFCN reads back as 16 bits on this message even though SET takes 32.
+            repeat(reader.u8()) {
+                if (reader.remaining >= 4) cells.put(JSONObject().put("pci", reader.u16()).put("earfcn", reader.u16()))
             }
         }
-        return cells
+        return JSONObject().put("active", cells.length() > 0).put("cells", cells)
     }
 
     private fun nrLockState(client: QmiClient): JSONObject {
-        val response = client.send(NAS_NR_LOCK_GET).check(R.string.qc_op_nr_cell_lock_query)
-        val type =
-            response.tlv(TLV_NR_LOCK_GET_TYPE)?.takeIf { it.size >= 4 }?.let { Reader(it).i32() } ?: NR_LOCK_TYPE_NONE
+        val response = client.send(NAS_NR_LOCK_GET).check("the NR cell lock query")
+        val type = response.tlv(TLV_NR_LOCK_GET_TYPE)?.takeIf { it.size >= 4 }?.let { Reader(it).i32() } ?: NR_LOCK_TYPE_NONE
         val lock = JSONObject().put("type", type).put("active", type != NR_LOCK_TYPE_NONE)
         response.tlv(TLV_NR_LOCK_GET_PCI_CELL)?.takeIf { it.size >= NR_LOCKED_CELL_BYTES }?.let {
             val reader = Reader(it)
@@ -417,23 +342,17 @@ object Qualcomm {
             val reader = Reader(it)
             val arfcns = JSONArray()
             repeat(reader.u8()) {
-                if (reader.remaining >= 8) arfcns.put(
-                    JSONObject().put("arfcn", reader.u32()).put("scs", scsKhz(reader.i32()))
-                )
+                if (reader.remaining >= 8) arfcns.put(JSONObject().put("arfcn", reader.u32()).put("scs", scsKhz(reader.i32())))
             }
             lock.put("arfcns", arfcns)
         }
-        // Each frequency holds a PCI count, the PCIs (u16 each), an SCS mask (u16), the ARFCN (u32) and a band mask.
-        // Only the first frequency is read, since we set one
-        response.tlv(TLV_NR_LOCK_GET_MULTI_PCI)?.takeIf { it.size >= 2 }?.let {
+        response.tlv(TLV_NR_LOCK_GET_GNBS)?.let {
             val reader = Reader(it)
-            val frequencyCount = reader.u8()
-            val pciCount = reader.u8()
-            if (frequencyCount > 0 && reader.remaining >= pciCount * 2 + 2 + 4) {
-                val pcis = List(pciCount) { reader.u16() }
-                reader.skip(2)
-                lock.put("arfcn", reader.u32()).put("pcis", JSONArray(pcis))
+            val gnbs = JSONArray()
+            repeat(reader.u8()) {
+                if (reader.remaining >= 8) gnbs.put(reader.u64())
             }
+            lock.put("gnbs", gnbs)
         }
         return lock
     }
@@ -459,7 +378,7 @@ object Qualcomm {
         nas(sim) { client ->
             when (kind) {
                 "lte" -> {
-                    client.send(NAS_SET_SSP, lteBandsRequest(bands, persist)).check(R.string.qc_op_lte_band_lock)
+                    client.send(NAS_SET_SSP, lteBandsRequest(bands, persist)).check("the LTE band lock")
                 }
 
                 "gsm", "wcdma" -> {
@@ -473,10 +392,10 @@ object Qualcomm {
                 "nr" -> {
                     // One accepted mask is enough. When all three are refused, the first refusal is reported.
                     val results = setAllNrMasks(client, Bands.toMask(bands, NR_MASK_BYTES), persist)
-                    if (results.none { it.ok }) results.first().check(R.string.qc_op_nr_band_lock)
+                    if (results.none { it.ok }) results.first().check("the NR band lock")
                 }
 
-                else -> fail(R.string.qc_unknown_band_group, kind)
+                else -> throw QmiException("Unknown band group: $kind.")
             }
         }
         return JSONObject().put("applied", JSONArray(bands)).put("notes", notes)
@@ -493,7 +412,7 @@ object Qualcomm {
         val currentMask =
             client
                 .send(NAS_GET_SSP)
-                .check(R.string.qc_op_legacy_band_query)
+                .check("the 2G and 3G band query")
                 .legacyBandMask(TLV_SSP_LEGACY_BANDS) ?: hardwareMask
         val isGsm = kind == "gsm"
         val technologyMask = if (isGsm) GSM_MASK else WCDMA_MASK
@@ -501,7 +420,7 @@ object Qualcomm {
         val newMask = (currentMask and technologyMask.inv()) or bitMask(selectedBits)
         client
             .send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_LEGACY_BANDS, LittleEndian.u64(newMask)))
-            .check(if (isGsm) R.string.qc_op_gsm_band_lock else R.string.qc_op_wcdma_band_lock)
+            .check(if (isGsm) "the GSM band lock" else "the WCDMA band lock")
     }
 
     private fun setNrSaOrNsaBands(
@@ -516,9 +435,9 @@ object Qualcomm {
         val bandsTlv = if (isSa) TLV_SSP_NR_SA_BANDS_SET else TLV_SSP_NR_NSA_BANDS_SET
         if (client.send(NAS_SET_SSP, sspRequest(persist).add(bandsTlv, mask)).ok) return
         // Older firmware only knows the combined NR mask.
-        client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_BANDS_SET, mask)).check(R.string.qc_op_nr_band_lock)
+        client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_COMBINED, mask)).check("the NR band lock")
         val modeName = if (isSa) "SA" else "NSA"
-        notes.put(Text(R.string.qc_note_nr_bands_combined, modeName).toJson())
+        notes.put("This modem can't set $modeName bands on their own, so the bands were applied to both SA and NSA.")
     }
 
     /** Only one of the two LTE masks goes into a request, because some firmware rejects them together. */
@@ -538,7 +457,7 @@ object Qualcomm {
         mask: ByteArray,
         persist: Boolean,
     ): List<QmiResponse> =
-        listOf(TLV_SSP_NR_BANDS_SET, TLV_SSP_NR_SA_BANDS_SET, TLV_SSP_NR_NSA_BANDS_SET)
+        listOf(TLV_SSP_NR_COMBINED, TLV_SSP_NR_SA_BANDS_SET, TLV_SSP_NR_NSA_BANDS_SET)
             .map { client.send(NAS_SET_SSP, sspRequest(persist).add(it, mask)) }
 
     fun reset(
@@ -547,14 +466,11 @@ object Qualcomm {
     ): JSONObject {
         val hardware = hardwareBands()
         nas(sim) { client ->
-            client.send(
-                NAS_SET_SSP,
-                sspRequest(persist).add(TLV_SSP_LEGACY_BANDS, LittleEndian.u64(hardware.legacyMask))
-            )
-            client.send(NAS_SET_SSP, lteBandsRequest(hardware.lte, persist)).check(R.string.qc_op_lte_band_restore)
+            client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_LEGACY_BANDS, LittleEndian.u64(hardware.legacyMask)))
+            client.send(NAS_SET_SSP, lteBandsRequest(hardware.lte, persist)).check("restoring the LTE bands")
             if (hardware.nr.isNotEmpty()) {
                 setAllNrMasks(client, Bands.toMask(hardware.nr, NR_MASK_BYTES), persist)
-                client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_MODE_SET, LittleEndian.u32(NR_MODE_SA_AND_NSA)))
+                client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_MODE, LittleEndian.u32(NR_MODE_SA_AND_NSA)))
             }
         }
         return JSONObject().put("restored", true)
@@ -569,7 +485,7 @@ object Qualcomm {
         nas(sim) { client ->
             client
                 .send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_MODE_PREFERENCE, LittleEndian.u16(mask)))
-                .check(R.string.qc_op_network_mode)
+                .check("the network mode change")
         }
         return JSONObject().put("rat", mask)
     }
@@ -581,8 +497,7 @@ object Qualcomm {
         persist: Boolean,
     ): JSONObject {
         nas(sim) { client ->
-            client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_MODE_SET, LittleEndian.u32(mode.toLong())))
-                .check(R.string.qc_op_nr_mode)
+            client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NR_MODE, LittleEndian.u32(mode.toLong()))).check("the 5G mode change")
         }
         return JSONObject().put("nrMode", mode)
     }
@@ -609,9 +524,8 @@ object Qualcomm {
                     .u8(TLV_SSP_MNC_PCS_DIGIT, if (threeDigitMnc) 1 else 0)
             var response = client.send(NAS_SET_SSP, withPcsDigit)
             // Some firmware rejects the PCS-digit TLV. The selection alone still works for most MNCs.
-            if (!response.ok) response =
-                client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NETWORK_SELECTION, selection))
-            response.check(R.string.qc_op_plmn_lock)
+            if (!response.ok) response = client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NETWORK_SELECTION, selection))
+            response.check("the PLMN lock")
             JSONObject().put("mcc", mcc).put("mnc", mnc)
         }
 
@@ -621,8 +535,7 @@ object Qualcomm {
     ): JSONObject =
         nas(sim) { client ->
             val selection = networkSelection(NETWORK_SELECTION_AUTOMATIC, mcc = 0, mnc = 0)
-            client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NETWORK_SELECTION, selection))
-                .check(R.string.qc_op_plmn_unlock)
+            client.send(NAS_SET_SSP, sspRequest(persist).add(TLV_SSP_NETWORK_SELECTION, selection)).check("the PLMN unlock")
             JSONObject().put("automatic", true)
         }
 
@@ -632,19 +545,18 @@ object Qualcomm {
         earfcn: Long,
         pcis: List<Int>,
     ): JSONObject {
-        if (pcis.isEmpty() || pcis.size > LTE_LOCK_MAX_CELLS) fail(R.string.qc_pci_count, LTE_LOCK_MAX_CELLS)
+        require(pcis.isNotEmpty() && pcis.size <= 64) { "Enter between 1 and 64 PCIs." }
         val cells = ByteArrayOutputStream()
         cells.write(pcis.size)
         for (pci in pcis) {
             cells.write(LittleEndian.u16(pci))
             cells.write(LittleEndian.u32(earfcn))
         }
-        return nas(sim) { client -> setLteCells(client, cells.toByteArray(), R.string.qc_op_lte_cell_lock) }
+        return nas(sim) { client -> setLteCells(client, cells.toByteArray(), "the LTE cell lock") }
     }
 
     // An empty cell list (a count of zero) clears the lock.
-    fun lteUnlock(sim: Int): JSONObject =
-        nas(sim) { client -> setLteCells(client, byteArrayOf(0), R.string.qc_op_lte_cell_unlock) }
+    fun lteUnlock(sim: Int): JSONObject = nas(sim) { client -> setLteCells(client, byteArrayOf(0), "the LTE cell unlock") }
 
     /**
      * Some modems only change the LTE cell lock while LTE is off, so a refusal for that reason is sent again in
@@ -653,11 +565,9 @@ object Qualcomm {
     private fun setLteCells(
         client: QmiClient,
         cells: ByteArray,
-        @StringRes what: Int,
+        what: String,
     ): JSONObject {
-        fun send() =
-            client.send(NAS_LTE_LOCK_SET, Tlvs().add(TLV_LTE_LOCK_SET_CELLS, cells).u8(TLV_LTE_LOCK_SET_ENFORCE, 1))
-
+        fun send() = client.send(NAS_LTE_LOCK_SET, Tlvs().add(TLV_LTE_LOCK_SET_CELLS, cells).u8(TLV_LTE_LOCK_SET_ENFORCE, 1))
         val response = send()
         val needsLteOff = response.error == ERR_INCOMPATIBLE_STATE
         if (needsLteOff) {
@@ -669,22 +579,17 @@ object Qualcomm {
                     Thread.sleep(LTE_OFF_RETRY_MS)
                     retry = send()
                 }
-                retry.checkLteLock(what)
+                retry.check(what)
             }
         } else {
-            response.checkLteLock(what)
+            response.check(what)
         }
         val state = runCatching { lteLockState(client) }.getOrDefault(JSONObject())
         return state.put("airplaneMode", needsLteOff)
     }
 
-    private fun QmiResponse.checkLteLock(@StringRes what: Int): QmiResponse {
-        if (error == ERR_ARG_TOO_LONG) fail(R.string.qc_lte_lock_too_many_pcis, Text(what), LTE_LOCK_MAX_CELLS_OLD_MODEMS)
-        return check(what)
-    }
-
     /**
-     * type: "pci", "arfcn" (frequency only) or "multi" (several PCIs on one ARFCN).
+     * type: "pci", "arfcn" (frequency only), "multi" (several PCIs on one ARFCN), "gnb" (allow-list).
      * Applies to the SCG in NSA and the PCell in SA.
      */
     fun nrLock(
@@ -693,7 +598,7 @@ object Qualcomm {
     ): JSONObject {
         val request = nrLockRequestFor(args)
         return nas(sim) { client ->
-            client.send(NAS_NR_LOCK_SET, request).check(R.string.qc_op_nr_cell_lock)
+            client.send(NAS_NR_LOCK_SET, request).check("the NR cell lock")
             nrLockState(client)
         }
     }
@@ -707,7 +612,7 @@ object Qualcomm {
         val band = args.optInt("band", Bands.nrBandsOf(arfcn.toInt()).firstOrNull() ?: 0)
         return when (type) {
             "pci" -> {
-                if (band <= 0) fail(R.string.qc_needs_nr_band)
+                require(band > 0) { "This lock needs an NR band." }
                 val cell = ByteArrayOutputStream()
                 cell.write(LittleEndian.u16(args.getInt("pci")))
                 cell.write(LittleEndian.u32(scsEnum(scsKhz).toLong()))
@@ -726,12 +631,10 @@ object Qualcomm {
             }
 
             "multi" -> {
-                if (band <= 0) fail(R.string.qc_needs_nr_band)
+                require(band > 0) { "This lock needs an NR band." }
                 val pcis = args.getJSONArray("pcis").toIntList()
-                if (pcis.isEmpty() || pcis.size > NR_LOCK_MAX_PCIS_PER_FREQUENCY) fail(R.string.qc_pci_count, NR_LOCK_MAX_PCIS_PER_FREQUENCY)
+                require(pcis.isNotEmpty() && pcis.size <= 64) { "Enter between 1 and 64 PCIs." }
                 val cells = ByteArrayOutputStream()
-                // A list with a single frequency.
-                cells.write(1)
                 cells.write(pcis.size)
                 pcis.forEach { cells.write(LittleEndian.u16(it)) }
                 // Unlike the single-PCI lock, the SCS goes in as a bit mask of enum values.
@@ -741,8 +644,19 @@ object Qualcomm {
                 nrLockRequest(NR_LOCK_TYPE_MULTI_PCI).add(TLV_NR_LOCK_SET_MULTI_PCI, cells.toByteArray())
             }
 
+            "gnb" -> {
+                val gnbArray = args.getJSONArray("gnbs")
+                val gnbIds = List(gnbArray.length()) { gnbArray.getLong(it) }
+                require(gnbIds.isNotEmpty() && gnbIds.size <= 32) { "Enter between 1 and 32 gNodeB IDs." }
+                val gnbs = ByteArrayOutputStream()
+                gnbs.write(gnbIds.size)
+                gnbIds.forEach { gnbs.write(LittleEndian.u64(it)) }
+                gnbs.write(args.optInt("idBits", 24))
+                nrLockRequest(NR_LOCK_TYPE_GNB).add(TLV_NR_LOCK_SET_GNBS, gnbs.toByteArray())
+            }
+
             else -> {
-                fail(R.string.qc_unknown_nr_lock_type, type)
+                throw QmiException("Unknown NR lock type: $type.")
             }
         }
     }
@@ -753,7 +667,7 @@ object Qualcomm {
             // so the lock is read first and the cleared state is reported without asking again.
             val lock = nrLockState(client)
             if (lock.optBoolean("active")) {
-                client.send(NAS_NR_LOCK_SET, nrLockRequest(NR_LOCK_TYPE_NONE)).check(R.string.qc_op_nr_cell_unlock)
+                client.send(NAS_NR_LOCK_SET, nrLockRequest(NR_LOCK_TYPE_NONE)).check("the NR cell unlock")
                 JSONObject().put("type", NR_LOCK_TYPE_NONE).put("active", false)
             } else {
                 lock
@@ -762,10 +676,8 @@ object Qualcomm {
 
     fun reboot(): JSONObject =
         QmiClient(DMS, 20_000).use { client ->
-            client.send(DMS_SET_OPERATING_MODE, Tlvs().u8(TLV_OPERATING_MODE, DMS_MODE_OFFLINE))
-                .check(R.string.qc_op_offline)
-            client.send(DMS_SET_OPERATING_MODE, Tlvs().u8(TLV_OPERATING_MODE, DMS_MODE_RESET))
-                .check(R.string.qc_op_reboot)
+            client.send(DMS_SET_OPERATING_MODE, Tlvs().u8(TLV_OPERATING_MODE, DMS_MODE_OFFLINE)).check("the offline request")
+            client.send(DMS_SET_OPERATING_MODE, Tlvs().u8(TLV_OPERATING_MODE, DMS_MODE_RESET)).check("the reboot request")
             JSONObject().put("method", "qmi")
         }
 
@@ -787,8 +699,7 @@ object Qualcomm {
             out
         }
 
-    private fun JSONObject.childObject(key: String): JSONObject =
-        optJSONObject(key) ?: JSONObject().also { put(key, it) }
+    private fun JSONObject.childObject(key: String): JSONObject = optJSONObject(key) ?: JSONObject().also { put(key, it) }
 
     private fun putSysInfo(
         client: QmiClient,
@@ -800,8 +711,7 @@ object Qualcomm {
         response.tlv(TLV_SYS_INFO_NR_PCI)?.takeIf { it.size >= 2 }?.let { nr.put("pci", Reader(it).u16()) }
         response.tlv(TLV_SYS_INFO_NR_ARFCN)?.takeIf { it.size >= 4 }?.let { nr.put("arfcn", Reader(it).u32()) }
         response.tlv(TLV_SYS_INFO_NR_SCS)?.takeIf { it.size >= 4 }?.let { nr.put("scs", scsKhz(Reader(it).i32())) }
-        response.tlv(TLV_SYS_INFO_ENDC_AVAILABLE)?.takeIf { it.isNotEmpty() }
-            ?.let { nr.put("endcAvailable", it[0].toInt() != 0) }
+        response.tlv(TLV_SYS_INFO_ENDC_AVAILABLE)?.takeIf { it.isNotEmpty() }?.let { nr.put("endcAvailable", it[0].toInt() != 0) }
         if (nr.has("arfcn") || nr.has("pci")) out.put("nr", nr)
     }
 
@@ -811,13 +721,10 @@ object Qualcomm {
     ) {
         val response = client.send(NAS_GET_CELL_LOCATION_INFO)
         if (!response.ok) return
-        response.tlv(TLV_CELL_LOCATION_LTE_INTRA)
-            ?.let { putLteIntraFrequency(it, response.tlv(TLV_CELL_LOCATION_LTE_INTRA_EARFCN), out) }
-        response.tlv(TLV_CELL_LOCATION_LTE_INTER)
-            ?.let { putLteInterFrequency(it, response.tlv(TLV_CELL_LOCATION_LTE_INTER_EARFCNS), out) }
+        response.tlv(TLV_CELL_LOCATION_LTE_INTRA)?.let { putLteIntraFrequency(it, response.tlv(TLV_CELL_LOCATION_LTE_INTRA_EARFCN), out) }
+        response.tlv(TLV_CELL_LOCATION_LTE_INTER)?.let { putLteInterFrequency(it, response.tlv(TLV_CELL_LOCATION_LTE_INTER_EARFCNS), out) }
         response.tlv(TLV_CELL_LOCATION_NR_CELL)?.let { putNrCell(it, out) }
-        response.tlv(TLV_CELL_LOCATION_NR_ARFCN)?.takeIf { it.size >= 4 }
-            ?.let { out.childObject("nr").put("arfcn", Reader(it).u32()) }
+        response.tlv(TLV_CELL_LOCATION_NR_ARFCN)?.takeIf { it.size >= 4 }?.let { out.childObject("nr").put("arfcn", Reader(it).u32()) }
     }
 
     private class LteMeasurement(
@@ -967,8 +874,7 @@ object Qualcomm {
         band: Int?,
     ): Long {
         if (band === null) return channel.toLong()
-        return listOf(channel.toLong(), channel + 0x10000L).firstOrNull { Bands.lteBandOf(it.toInt()) == band }
-            ?: channel.toLong()
+        return listOf(channel.toLong(), channel + 0x10000L).firstOrNull { Bands.lteBandOf(it.toInt()) == band } ?: channel.toLong()
     }
 
     private fun caCarrier(
@@ -1025,22 +931,22 @@ object Qualcomm {
      */
     fun reattach(sim: Int): JSONObject =
         nas(sim, timeoutMs = 20_000) { client ->
-            psAttach(client, PS_DETACH, R.string.qc_op_data_detach)
+            psAttach(client, PS_DETACH, "the data detach")
             Thread.sleep(2000)
-            psAttach(client, PS_ATTACH, R.string.qc_op_data_attach)
+            psAttach(client, PS_ATTACH, "the data attach")
             JSONObject().put("method", "qmi")
         }
 
     private fun psAttach(
         client: QmiClient,
         action: Int,
-        @StringRes what: Int,
+        what: String,
     ) {
         val response = client.send(NAS_ATTACH_DETACH, Tlvs().u8(TLV_ATTACH_ACTION, action))
         if (response.ok || response.error == ERR_NO_EFFECT) return
         // An internal error doesn't always mean the procedure failed, so the attach state gets the last word.
         if (response.error == ERR_INTERNAL && psStateReached(client, action)) return
-        fail(R.string.qmi_refused, Text(what), QmiResponse.errorName(response.error))
+        throw QmiException("The modem refused $what: ${QmiResponse.errorName(response.error)}.")
     }
 
     private fun psStateReached(
@@ -1070,13 +976,12 @@ object Qualcomm {
         msg: Int,
         payload: ByteArray,
     ): JSONObject {
-        val response =
-            if (service == NAS) nas(sim) { it.send(msg, payload) } else QmiClient(service).use { it.send(msg, payload) }
+        val response = if (service == NAS) nas(sim) { it.send(msg, payload) } else QmiClient(service).use { it.send(msg, payload) }
         val tlvs = JSONObject()
         response.tlvs.forEach { (id, value) -> tlvs.put("0x%02X".format(id), value.hex()) }
         return JSONObject()
             .put("result", response.result)
-            .put("error", QmiResponse.errorName(response.error).toJson())
+            .put("error", QmiResponse.errorName(response.error))
             .put("raw", response.raw.hex())
             .put("tlvs", tlvs)
     }

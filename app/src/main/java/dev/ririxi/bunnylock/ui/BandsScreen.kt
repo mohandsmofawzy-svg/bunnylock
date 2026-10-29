@@ -30,10 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.modem.Backend
 import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.NrMode
@@ -46,13 +43,13 @@ fun BandsScreen(
 ) {
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            SectionHeader(stringResource(R.string.bands_network_mode))
+            SectionHeader("Network mode")
             val currentMode = state.modem.netMode
             Panel {
                 ToggleGrid(
                     options = state.modem.netModes,
                     isChecked = { it == currentMode },
-                    label = { stringResource(it.label) },
+                    label = { it.label },
                     onToggle = vm::setNetMode,
                     columns = if (state.modem.supports5g) 3 else 2,
                     enabled = !state.busy,
@@ -71,11 +68,11 @@ fun BandsScreen(
         when {
             state.modem.supportsNrMode -> {
                 item {
-                    SectionHeader(stringResource(R.string.bands_5g_mode))
+                    SectionHeader("5G mode")
                     ConnectedChoice(
                         options = NrMode.entries,
                         selected = state.modem.nrMode,
-                        label = { stringResource(it.label) },
+                        label = { it.label },
                         onSelect = vm::setNrMode,
                         enabled = !state.busy,
                     )
@@ -88,7 +85,7 @@ fun BandsScreen(
                     ConnectedChoice(
                         options = listOf(true, false),
                         selected = state.modem.nrDc,
-                        label = { nsaOn -> stringResource(if (nsaOn) R.string.bands_nsa_on else R.string.bands_nsa_off) },
+                        label = { nsaOn -> if (nsaOn) "NSA on" else "NSA off" },
                         onSelect = vm::setNrDc,
                         enabled = !state.busy,
                     )
@@ -106,8 +103,8 @@ fun BandsScreen(
                             shapes = shapes,
                             colors = segmentColors(),
                             leadingContent = { Icon(BunnyIcons.Bands, contentDescription = null) },
-                            supportingContent = { Text(stringResource(R.string.bands_samsung_menu_hint)) },
-                        ) { Text(stringResource(R.string.bands_samsung_menu)) }
+                            supportingContent = { Text("Samsung's own band lock, built into the phone.") },
+                        ) { Text("Open Samsung band menu") }
                     }
                 }
             }
@@ -138,38 +135,45 @@ fun BandsScreen(
     }
 }
 
-@Composable
 private fun backendHint(state: UiState): String =
     when (state.modem.backend) {
-        Backend.QUALCOMM -> stringResource(if (state.modem.persist) R.string.bands_hint_qualcomm_persist else R.string.bands_hint_qualcomm_volatile)
-        Backend.MEDIATEK -> {
-            val atNode = state.modem.atNode
-            if (atNode.isEmpty()) stringResource(R.string.bands_hint_mediatek_auto) else stringResource(R.string.bands_hint_mediatek, atNode)
+        Backend.QUALCOMM -> {
+            val afterReboot =
+                if (state.modem.persist) {
+                    "Locks stay after a reboot (you can change that in Tools)."
+                } else {
+                    "Locks are cleared when you reboot."
+                }
+            "Changes apply right away over QMI. $afterReboot"
         }
 
-        Backend.PIXEL -> stringResource(R.string.bands_hint_pixel)
-        Backend.ANDROID, null -> stringResource(R.string.bands_hint_android)
+        Backend.MEDIATEK -> {
+            "Changes are sent with AT+EPBSE and AT+EPBSEH on ${state.modem.atNode.ifEmpty { "the AT port found automatically" }}."
+        }
+
+        Backend.PIXEL -> {
+            "Changes are saved to the modem's NV memory, and the radio restarts by itself to apply them."
+        }
+
+        Backend.ANDROID, null -> {
+            "This uses the radio HAL's system selection channels. Whether the modem follows them depends on the phone maker."
+        }
     }
 
-@Composable
 private fun selectionSummary(
     bandGroup: BandGroupState,
     selected: Set<Int>,
-): String {
-    val count = selected.size
-    val total = bandGroup.supported.size
-    val pending = selected != bandGroup.allowed
-    val stray = bandGroup.stray
-    return when {
-        stray !== null -> {
-            val band = bandGroup.group.bandLabel(stray)
-            stringResource(if (pending) R.string.bands_summary_stray_pending else R.string.bands_summary_stray, count, total, band)
+): String =
+    buildString {
+        append("${selected.size} of ${bandGroup.supported.size} selected")
+        val stray = bandGroup.stray
+        if (stray !== null) {
+            append(", locked but the phone is on ${bandGroup.group.bandLabel(stray)}")
+        } else if (bandGroup.locked) {
+            append(", locked")
         }
-
-        bandGroup.locked -> stringResource(if (pending) R.string.bands_summary_locked_pending else R.string.bands_summary_locked, count, total)
-        else -> stringResource(if (pending) R.string.bands_summary_pending else R.string.bands_summary, count, total)
+        if (selected != bandGroup.allowed) append(", not applied yet")
     }
-}
 
 @Composable
 private fun BandGroup(
@@ -200,12 +204,12 @@ private fun BandGroup(
                 shapes = shapes,
                 colors = segmentColors(),
                 supportingContent = {
-                    Text(if (pickingFavorites) stringResource(R.string.bands_pick_favorites_hint) else selectionSummary(bandGroup, selected))
+                    Text(if (pickingFavorites) "Tap the bands you want to keep in view." else selectionSummary(bandGroup, selected))
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconToggleButton(checked = pickingFavorites, onCheckedChange = ::pickFavorites) {
-                            Icon(Icons.Rounded.Star, contentDescription = stringResource(R.string.bands_pick_favorites))
+                            Icon(Icons.Rounded.Star, contentDescription = "Pick favorite bands")
                         }
                         LockBadge(bandGroup.locked && bandGroup.stray === null, size = 40.dp, ignored = bandGroup.stray !== null)
                     }
@@ -231,13 +235,7 @@ private fun BandGroup(
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     ) {
-                        Text(
-                            if (showAll) {
-                                stringResource(R.string.bands_show_favorites)
-                            } else {
-                                pluralStringResource(R.plurals.bands_show_all, bandGroup.supported.size, bandGroup.supported.size)
-                            },
-                        )
+                        Text(if (showAll) "Show favorites only" else "Show all ${bandGroup.supported.size} bands")
                     }
                 }
             }
@@ -247,19 +245,19 @@ private fun BandGroup(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     if (pickingFavorites) {
                         Spacer(Modifier.weight(1f))
-                        Button(onClick = { pickFavorites(false) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.bands_done)) }
+                        Button(onClick = { pickFavorites(false) }, shapes = ButtonDefaults.shapes()) { Text("Done") }
                     } else {
-                        TextButton(onClick = { onSelectAll(true) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.bands_all)) }
-                        TextButton(onClick = { onSelectAll(false) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.bands_none)) }
+                        TextButton(onClick = { onSelectAll(true) }, shapes = ButtonDefaults.shapes()) { Text("All") }
+                        TextButton(onClick = { onSelectAll(false) }, shapes = ButtonDefaults.shapes()) { Text("None") }
                         Spacer(Modifier.weight(1f))
                         OutlinedButton(onClick = onUnlock, enabled = !busy && bandGroup.locked, shapes = ButtonDefaults.shapes()) {
-                            Text(stringResource(R.string.common_unlock))
+                            Text("Unlock")
                         }
                         Spacer(Modifier.width(8.dp))
                         Button(onClick = onLock, enabled = !busy && selected.isNotEmpty(), shapes = ButtonDefaults.shapes()) {
                             Icon(BunnyIcons.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.common_lock))
+                            Text("Lock")
                         }
                     }
                 }

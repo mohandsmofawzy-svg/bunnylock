@@ -4,6 +4,13 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.namespace == "com.android") {
+                useModule("com.android.tools.build:gradle:${requested.version}")
+            }
+        }
+    }
 }
 
 plugins {
@@ -19,6 +26,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "bunnylock"
-// التطبيق يملك الواجهة، ووحدة modem تعزل طبقة التحكم بالمودم والمساعد ذي الصلاحيات.
 include(":app")
 include(":modem")

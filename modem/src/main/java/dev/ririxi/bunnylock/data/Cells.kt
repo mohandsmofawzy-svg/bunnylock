@@ -63,9 +63,6 @@ data class Cell(
     val operator: String? = null,
     /** Only LTE cells report it, and usually only the serving one. */
     val bandwidthKhz: Int? = null,
-    val sinr: Int? = null,
-    /** Android's elapsed-realtime timestamp for the radio measurement; null for modem-only reports. */
-    val measurementTimeMillis: Long? = null,
 ) {
     val key get() = "$rat:$arfcn:$pci"
 
@@ -83,7 +80,6 @@ object Cells {
             .thenByDescending { it.rat.ordinal }
             .thenByDescending { it.rsrp ?: -200 }
 
-    /** يطلب قائمة خلايا حديثة للشريحة؛ [freshWait] حد انتظار callback وبعده يستخدم آخر نتيجة أو cache النظام. */
     @SuppressLint("MissingPermission")
     suspend fun scan(
         context: Context,
@@ -101,7 +97,6 @@ object Cells {
 
     private val lastCellInfo = ConcurrentHashMap<Int, List<CellInfo>>()
 
-    /** يربط callback غير المتزامن بـ Coroutine؛ إلغاء الانتظار لا يوقف مسح Android الداخلي الجاري. */
     @SuppressLint("MissingPermission")
     private suspend fun freshCellInfo(telephony: TelephonyManager): List<CellInfo>? =
         suspendCancellableCoroutine { cont ->
@@ -122,7 +117,7 @@ object Cells {
                     },
                 )
             } catch (_: SecurityException) {
-                if (cont.isActive) cont.resume(null)
+                if (cont.isActive) cont.resume(emptyList())
             }
         }
 
@@ -186,8 +181,6 @@ object Cells {
             lteBand(identity.bands, earfcn),
             registered = info.isRegistered,
             rsrp = info.cellSignalStrength.rsrp.availableOrNull(),
-            sinr = info.cellSignalStrength.rssnr.availableOrNull(),
-            measurementTimeMillis = info.timestampMillis,
             source = "android",
             bandwidthKhz = identity.bandwidth.availableOrNull(),
         )
@@ -205,8 +198,6 @@ object Cells {
             nrBand(identity.bands, nrarfcn),
             registered = info.isRegistered,
             rsrp = signal.ssRsrp.availableOrNull(),
-            sinr = signal.ssSinr.availableOrNull(),
-            measurementTimeMillis = info.timestampMillis,
             source = "android",
         )
     }
@@ -311,8 +302,6 @@ object Cells {
             byKey[cell.key] = earlier?.copy(
                 registered = earlier.registered || cell.registered,
                 rsrp = earlier.rsrp ?: cell.rsrp,
-                sinr = earlier.sinr ?: cell.sinr,
-                measurementTimeMillis = earlier.measurementTimeMillis ?: cell.measurementTimeMillis,
                 note = earlier.note.ifEmpty { cell.note },
                 band = earlier.band ?: cell.band,
                 plmn = earlier.plmn ?: cell.plmn,

@@ -1,8 +1,5 @@
 package dev.ririxi.bunnylock.data
 
-import android.content.Context
-import dev.ririxi.bunnylock.modem.Text
-import dev.ririxi.bunnylock.modem.string
 import org.json.JSONObject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -10,10 +7,7 @@ import kotlin.time.Duration.Companion.seconds
 /** The helper couldn't be started or reached, or it refused a command. Despite the name, the Shizuku client throws it too. */
 class RootException(
     message: String,
-    val text: Text? = null,
-) : Exception(message) {
-    constructor(context: Context, text: Text) : this(context.string(text), text)
-}
+) : Exception(message)
 
 interface PrivilegedClient {
     val running: Boolean

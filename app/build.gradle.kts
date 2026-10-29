@@ -18,7 +18,6 @@ val releaseSigning = providers.fileContents(rootProject.layout.projectDirectory.
 
 android {
     namespace = "dev.ririxi.bunnylock"
-    // يحتاج التطبيق إلى API 37 للبناء ويستهدف Android 30 فما بعده وفق إعدادات المشروع.
     compileSdk = 37
 
     defaultConfig {
@@ -26,7 +25,7 @@ android {
         minSdk = 30
         targetSdk = 37
         versionCode = 1
-        versionName = "1.3.3"
+        versionName = "1.3.1"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
@@ -61,18 +60,13 @@ android {
         compose = true
     }
 
-    androidResources {
-        localeFilters += listOf("en", "pl", "zh-rCN", "ar")
-    }
-
     packaging {
-        // يحتاج RootServer إلى تحميل libbunnyqrtr.so من nativeLibraryDir، لذلك يجب استخراج المكتبة عند التثبيت.
+        // The root helper System.load() libbunnyqrtr.so from nativeLibraryDir, so it must be extracted.
         jniLibs.useLegacyPackaging = true
     }
 }
 
 androidComponents {
-    // يطبق تدوير شهادة APK اختياريًا فقط عند إعداد keystore.properties وملف lineage.
     onVariants(selector().withBuildType("release")) { variant ->
         val signing = releaseSigning ?: return@onVariants
         val lineageFile = signing.getProperty("lineageFile") ?: return@onVariants
@@ -91,7 +85,6 @@ androidComponents {
 }
 
 dependencies {
-    // مكتبات الواجهة وCompose ودورة الحياة، إضافة إلى وحدة المودم وعميل Shizuku.
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

@@ -1,2 +1,2 @@
-# يبدأ Shizuku هذه الخدمة باسم الصنف داخل عملية مستقلة، لذلك يجب إبقاء الاسم والأعضاء.
+# Shizuku starts this UserService by its class name in a process of its own.
 -keep class dev.ririxi.bunnylock.shizuku.ShizukuService { *; }

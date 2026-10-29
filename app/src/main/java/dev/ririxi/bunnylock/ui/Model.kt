@@ -1,13 +1,12 @@
 package dev.ririxi.bunnylock.ui
 
 import dev.ririxi.bunnylock.core.Bands
-import dev.ririxi.bunnylock.data.DynamicPlmnStatus
 import dev.ririxi.bunnylock.data.Release
 import dev.ririxi.bunnylock.modem.BandGroupState
 import dev.ririxi.bunnylock.modem.Group
 import dev.ririxi.bunnylock.modem.LockRat
 import dev.ririxi.bunnylock.modem.ModemState
-import dev.ririxi.bunnylock.shizuku.DeviceSpoofingState
+import dev.ririxi.bunnylock.watchdog.WatchdogState
 
 val Group.favoritesKey: String
     get() =
@@ -33,13 +32,6 @@ data class CellForm(
     val nrCandidates: List<Int> get() = nrArfcn.toIntOrNull()?.let { Bands.nrBandsOf(it) } ?: emptyList()
 }
 
-data class LockProfile(
-    val id: String,
-    val name: String,
-    val bands: Map<Group, Set<Int>>,
-    val cell: CellForm?,
-)
-
 data class UiState(
     val modem: ModemState = ModemState(),
     val busy: Boolean = false,
@@ -47,14 +39,12 @@ data class UiState(
     val form: CellForm = CellForm(),
     val plmnMcc: String = "",
     val plmnMnc: String = "",
+    val dynamicColor: Boolean = true,
     val checkUpdates: Boolean = true,
     val toolOutput: String = "",
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
-    val profiles: List<LockProfile> = emptyList(),
-    val gameModeEnabled: Boolean = false,
-    val deviceSpoofing: DeviceSpoofingState = DeviceSpoofingState(),
-    val dynamicPlmn: DynamicPlmnStatus = DynamicPlmnStatus(),
+    val watchdog: WatchdogState = WatchdogState(),
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

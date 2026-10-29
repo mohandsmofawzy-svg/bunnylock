@@ -9,20 +9,13 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.RemoteException
-import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.data.HelperClient
 import dev.ririxi.bunnylock.data.PrivilegedClient
 import dev.ririxi.bunnylock.data.RootException
-import dev.ririxi.bunnylock.data.errorOf
-import dev.ririxi.bunnylock.data.reasonText
-import dev.ririxi.bunnylock.modem.R as ModemR
-import dev.ririxi.bunnylock.modem.Text
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -74,7 +67,7 @@ class ShizukuClient(
     override val running: Boolean get() = shell?.running ?: (service?.alive == true)
 
     override suspend fun start(): JSONObject {
-        if (Shizuku.isPreV11()) throw RootException(context, Text(R.string.system_shizuku_too_old))
+        if (Shizuku.isPreV11()) throw RootException("This Shizuku version is too old. Update Shizuku and try again.")
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) requestPermission()
         val shellFirst = prefs.getBoolean(PREF_SHELL_FIRST, false)
         return try {
@@ -87,8 +80,7 @@ class ShizukuClient(
                     if (shellFirst) startAsService() else startInShell()
                 } catch (second: Exception) {
                     if (second is CancellationException) throw second
-                    val failed = Text(ModemR.string.something_went_wrong)
-                    throw RootException(context, Text(ModemR.string.modem_sentences, first.reasonText() ?: failed, second.reasonText() ?: failed))
+                    throw RootException("${first.message} ${second.message}")
                 }
             prefs.edit().putBoolean(PREF_SHELL_FIRST, !shellFirst).apply()
             hello
@@ -108,15 +100,13 @@ class ShizukuClient(
         return hello
     }
 
-    private inner class ShellHelper : HelperClient(context, Text(ModemR.string.helper_shizuku)) {
+    private inner class ShellHelper : HelperClient(context, "Shizuku helper") {
         override fun openShell(): Process {
-            val server =
-                IShizukuService.Stub.asInterface(Shizuku.getBinder())
-                    ?: throw RootException(this@ShizukuClient.context, Text(R.string.system_shizuku_stopped))
+            val server = IShizukuService.Stub.asInterface(Shizuku.getBinder()) ?: throw RootException("Shizuku stopped.")
             return try {
                 RemoteShell(server.newProcess(arrayOf("/system/bin/sh"), null, null))
             } catch (e: Exception) {
-                throw RootException(this@ShizukuClient.context, Text(R.string.system_shizuku_no_shell, e.message ?: e.javaClass.simpleName))
+                throw RootException("Shizuku couldn't open a shell (${e.message}).")
             }
         }
 
@@ -127,7 +117,7 @@ class ShizukuClient(
 
     private suspend fun requestPermission() {
         if (Shizuku.shouldShowRequestPermissionRationale()) {
-            throw RootException(context, Text(R.string.system_shizuku_denied_earlier))
+            throw RootException("Shizuku access was denied earlier. Allow bunnylock in the Shizuku app and try again.")
         }
         // Some phones keep Shizuku from showing its prompt, so the wait has to end by itself.
         try {
@@ -145,7 +135,7 @@ class ShizukuClient(
                                     if (grantResult == PackageManager.PERMISSION_GRANTED) {
                                         cont.resume(Unit)
                                     } else {
-                                        cont.resumeWithException(RootException(context, Text(R.string.system_shizuku_denied)))
+                                        cont.resumeWithException(RootException("Shizuku access was denied."))
                                     }
                                 }
                             }
@@ -156,8 +146,9 @@ class ShizukuClient(
                 }
             }
         } catch (_: TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-            throw RootException(context, Text(R.string.system_shizuku_prompt_unanswered))
+            throw RootException(
+                "Shizuku's permission prompt wasn't answered. If it never appeared, allow bunnylock in the Shizuku app and come back.",
+            )
         }
     }
 
@@ -175,7 +166,7 @@ class ShizukuClient(
                                     if (!cont.isActive) return
                                     val proxy = binder?.takeIf { it.pingBinder() }?.let { ShizukuService.Proxy(it) }
                                     if (proxy === null) {
-                                        cont.resumeWithException(RootException(context, Text(R.string.system_shizuku_service_no_response)))
+                                        cont.resumeWithException(RootException("The Shizuku service started but didn't respond."))
                                     } else {
                                         cont.resume(proxy)
                                     }
@@ -196,8 +187,7 @@ class ShizukuClient(
                 }
             }
         } catch (_: TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-            throw RootException(context, Text(R.string.system_shizuku_service_start_timeout))
+            throw RootException("The Shizuku service didn't start in time.")
         }
 
     override suspend fun call(
@@ -206,7 +196,7 @@ class ShizukuClient(
         build: JSONObject.() -> Unit,
     ): JSONObject {
         shell?.let { return it.call(cmd, timeout, build) }
-        val proxy = service ?: throw RootException(context, Text(R.string.system_shizuku_service_not_running))
+        val proxy = service ?: throw RootException("The Shizuku service isn't running.")
         val request = JSONObject().put("cmd", cmd).apply(build)
         // A binder call can't be interrupted, so one that hangs is left behind on its own thread.
         val reply = CompletableDeferred<String>()
@@ -217,12 +207,11 @@ class ShizukuClient(
             try {
                 JSONObject(withTimeout(timeout) { reply.await() })
             } catch (_: TimeoutCancellationException) {
-                currentCoroutineContext().ensureActive()
-                throw RootException(context, Text(R.string.system_shizuku_service_timeout))
+                throw RootException("The Shizuku service didn't answer in time.")
             } catch (_: RemoteException) {
-                throw RootException(context, Text(R.string.system_shizuku_service_died))
+                throw RootException("The Shizuku service stopped unexpectedly.")
             }
-        if (!response.optBoolean("ok")) throw context.errorOf(response)
+        if (!response.optBoolean("ok")) throw RootException(response.optString("error", "Something went wrong."))
         return response.optJSONObject("data") ?: JSONObject()
     }
 

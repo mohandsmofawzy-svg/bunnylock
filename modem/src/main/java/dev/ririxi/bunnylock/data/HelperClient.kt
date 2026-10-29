@@ -1,18 +1,10 @@
 package dev.ririxi.bunnylock.data
 
 import android.content.Context
-import dev.ririxi.bunnylock.modem.ModemException
-import dev.ririxi.bunnylock.modem.R
-import dev.ririxi.bunnylock.modem.Text
-import dev.ririxi.bunnylock.modem.asSentence
-import dev.ririxi.bunnylock.modem.toText
-import dev.ririxi.bunnylock.modem.verbatim
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
@@ -25,10 +17,13 @@ import kotlin.concurrent.thread
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/** يشغل RootServer داخل app_process ويتبادل JSON معه؛ تطابق معرفات الطلب الردود مع Coroutine المنتظرة. */
+/**
+ * Runs RootServer in app_process inside a shell and talks JSON to it.
+ * Every request carries an id, and the reader thread hands each reply to the call that waits for that id.
+ */
 abstract class HelperClient(
     private val context: Context,
-    private val name: Text,
+    private val name: String,
 ) : PrivilegedClient {
     private var process: Process? = null
     private var writer: BufferedWriter? = null
@@ -37,15 +32,14 @@ abstract class HelperClient(
 
     override val running get() = process?.isAlive == true
 
-    protected open val startFailed: Text get() = Text(R.string.modem_helper_start_failed, name)
+    protected open val startFailed: String get() = "The $name couldn't start."
 
-    protected open val startTimedOut: Text get() = Text(R.string.modem_helper_start_timed_out, name)
+    protected open val startTimedOut: String get() = "The $name didn't start in time."
 
     protected abstract fun openShell(): Process
 
     protected open fun exited() {}
 
-    /** يبدأ العملية ويهيئ قارئ الردود؛ مهلة بدء التشغيل أو إلغاءه ينهي العملية المنشأة. */
     override suspend fun start(): JSONObject =
         withContext(Dispatchers.IO) {
             stop()
@@ -72,21 +66,24 @@ abstract class HelperClient(
                     withTimeout(20.seconds) { ready.await() }
                 } catch (_: TimeoutCancellationException) {
                     shell.destroy()
-                    currentCoroutineContext().ensureActive()
-                    throw RootException(context, startTimedOut)
+                    throw RootException(startTimedOut)
                 } catch (e: CancellationException) {
                     shell.destroy()
                     throw e
                 } catch (e: Exception) {
                     shell.destroy()
-                    throw RootException(context, e.reasonText() ?: startFailed)
+                    throw RootException(e.message ?: startFailed)
                 }
             process = shell
             writer = helperStdin
             hello
         }
 
-    /** يقرأ ردود المساعد حتى موته، ويربط كل رد بالطلب الموافق ويفشل المنتظرين عند إغلاق القناة. */
+    /**
+     * Reads the helper's output for as long as it lives: the hello line completes [ready], every other line
+     * answers the pending call with the same id. The helper's stdout closing is how its death is noticed,
+     * and everything still waiting then fails.
+     */
     private fun startReplyReader(
         helperStdout: BufferedReader,
         ready: CompletableDeferred<JSONObject>,
@@ -105,21 +102,20 @@ abstract class HelperClient(
             } catch (_: IOException) {
                 // Destroying the process can break the pipe in the middle of a read, which ends the loop like the end of the stream does.
             }
-            val helperStopped = RootException(context, Text(R.string.modem_helper_stopped, name))
-            ready.completeExceptionally(RootException(context, startFailed))
+            val helperStopped = RootException("The $name stopped unexpectedly.")
+            ready.completeExceptionally(RootException(startFailed))
             pendingReplies.values.forEach { it.completeExceptionally(helperStopped) }
             pendingReplies.clear()
             exited()
         }
     }
 
-    /** يرسل طلب JSON بمعرف مستقل وينتظر الرد حتى المهلة؛ إلغاء الانتظار لا يضمن إيقاف أمر بدأ داخل المساعد. */
     override suspend fun call(
         cmd: String,
         timeout: Duration,
         build: JSONObject.() -> Unit,
     ): JSONObject {
-        val helperStdin = writer ?: throw RootException(context, Text(R.string.modem_helper_not_running, name))
+        val helperStdin = writer ?: throw RootException("The $name isn't running.")
         val id = lastRequestId.incrementAndGet()
         val request = JSONObject().put("id", id).put("cmd", cmd).apply(build)
         val reply = CompletableDeferred<JSONObject>()
@@ -136,19 +132,17 @@ abstract class HelperClient(
                 }
                 withTimeout(timeout) { reply.await() }
             } catch (_: TimeoutCancellationException) {
-                currentCoroutineContext().ensureActive()
-                throw RootException(context, Text(R.string.modem_helper_no_answer, name))
+                throw RootException("The $name didn't answer in time.")
             } catch (_: IOException) {
                 // The pipe to a helper that has died breaks on the write.
-                throw RootException(context, Text(R.string.modem_helper_stopped, name))
+                throw RootException("The $name stopped unexpectedly.")
             } finally {
                 pendingReplies.remove(id)
             }
-        if (!response.optBoolean("ok")) throw context.errorOf(response)
+        if (!response.optBoolean("ok")) throw RootException(response.optString("error", "Something went wrong."))
         return response.optJSONObject("data") ?: JSONObject()
     }
 
-    /** يرسل أمر خروج ثم ينهي العملية المحلية، ولا يوقف خدمات Android أو الراديو نفسه. */
     override fun stop() {
         // A helper that is already gone can't take the exit command. Destroying the process covers that case.
         runCatching {
@@ -161,20 +155,4 @@ abstract class HelperClient(
         process = null
         writer = null
     }
-}
-
-fun Context.errorOf(reply: JSONObject): RootException {
-    reply.optJSONObject("text")?.let { return RootException(this, it.toText()) }
-    val error = reply.optString("error")
-    return if (error.isBlank()) RootException(this, Text(R.string.something_went_wrong)) else RootException(error)
-}
-
-fun Throwable.reasonText(): Text? {
-    val ownText =
-        when (this) {
-            is RootException -> text
-            is ModemException -> text
-            else -> null
-        }
-    return ownText ?: message?.takeIf { it.isNotBlank() }?.let { verbatim(it.asSentence()) }
 }

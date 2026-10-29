@@ -3,7 +3,6 @@ package dev.ririxi.bunnylock.root
 import android.system.Os
 import android.telephony.SubscriptionManager
 import dev.ririxi.bunnylock.core.toIntList
-import dev.ririxi.bunnylock.modem.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.FileDescriptor
@@ -17,7 +16,7 @@ import kotlin.system.exitProcess
  *
  * One JSON object per line on stdin and stdout:
  *   request  {"id":1,"cmd":"qc.state","sim":1,...}
- *   response {"id":1,"ok":true,"data":...} | {"id":1,"ok":false,"error":"...","text":{...}}
+ *   response {"id":1,"ok":true,"data":...} | {"id":1,"ok":false,"error":"..."}
  */
 object RootServer {
     const val VERSION = 1
@@ -76,7 +75,6 @@ object RootServer {
             response.put("data", data ?: JSONObject.NULL).put("ok", true)
         } catch (error: Throwable) {
             response.put("ok", false).put("error", error.message ?: error.javaClass.simpleName)
-            if (error is HelperFailure) response.put("text", error.toTextJson())
         }
         return response.toString()
     }
@@ -99,14 +97,6 @@ object RootServer {
             "ping" -> JSONObject().put("uid", Os.getuid()).put("version", VERSION)
 
             "detect" -> Sys.detect()
-
-            "deviceSpoof.inspect" -> Sys.deviceIdentity()
-
-            "deviceSpoof.display.read" -> Sys.readRefreshSettings()
-
-            "deviceSpoof.display.setRate" -> Sys.setRefreshRate(request.getDouble("rate"))
-
-            "deviceSpoof.display.restoreRate" -> Sys.restoreRefreshSettings(request.getString("minOriginal"), request.getString("peakOriginal"))
 
             "aosp.state" -> Aosp.state(subId)
 
@@ -132,7 +122,7 @@ object RootServer {
             "radio.cycle" -> Aosp.radioCycle()
 
             "radio.cycleSim" -> {
-                if (subId < 0) fail(R.string.server_unknown_subscription)
+                check(subId >= 0) { "This SIM's subscription isn't known." }
                 Aosp.cycleSubscriberRadio(subId)
             }
 
@@ -162,13 +152,13 @@ object RootServer {
 
             "qc.reboot" -> Qualcomm.reboot()
 
-            // Manual re-attach can fall back to a radio cycle; Game Mode explicitly disables that fallback.
+            // A failed QMI detach/attach falls back to power-cycling the radio through ITelephony, but only when the subscription is known.
             "qc.reattach" ->
                 try {
                     Qualcomm.reattach(sim)
                 } catch (e: Exception) {
-                    if (!request.optBoolean("allowRadioFallback", true) || subId < 0) throw e
-                    Aosp.cycleSubscriberRadio(subId).put("qmiError", e.toTextJson())
+                    if (subId < 0) throw e
+                    Aosp.cycleSubscriberRadio(subId).put("qmiError", e.message)
                 }
 
             "qc.raw" -> Qualcomm.raw(sim, request.getInt("service"), request.getInt("msg"), request.optString("payload").unhex())
@@ -218,7 +208,7 @@ object RootServer {
                 JSONObject().put("reply", At.send(request.getString("node"), request.getString("command"), timeoutMs))
             }
 
-            else -> fail(R.string.server_unknown_command, command)
+            else -> throw IllegalArgumentException("Unknown command: $command.")
         }
     }
 }

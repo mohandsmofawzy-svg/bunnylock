@@ -2,7 +2,6 @@
 
 package dev.ririxi.bunnylock.ui
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -53,7 +52,6 @@ import androidx.compose.ui.graphics.vector.DefaultFillType
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -160,7 +158,7 @@ fun InfoItem(
     label: String,
     value: String,
 ) {
-    val shown = value.ifEmpty { stringResource(R.string.common_unknown) }
+    val shown = value.ifEmpty { "Unknown" }
     val valueText: @Composable () -> Unit = {
         Text(shown, style = MaterialTheme.typography.bodyMediumEmphasized, color = MaterialTheme.colorScheme.onSurface)
     }
@@ -182,7 +180,7 @@ private const val MAX_TRAILING_VALUE_LENGTH = 22
 fun <T> ConnectedChoice(
     options: List<T>,
     selected: T?,
-    label: @Composable (T) -> String,
+    label: (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -211,7 +209,7 @@ fun <T> ConnectedChoice(
 fun <T> ToggleGrid(
     options: List<T>,
     isChecked: (T) -> Boolean,
-    label: @Composable (T) -> String,
+    label: (T) -> String,
     onToggle: (T) -> Unit,
     modifier: Modifier = Modifier,
     columns: Int = 4,
@@ -277,9 +275,9 @@ fun LockBadge(
     val colors = MaterialTheme.colorScheme
     val style =
         when {
-            ignored -> LockBadgeStyle(MaterialShapes.SoftBurst, colors.error.copy(alpha = 0.2f), colors.error, BunnyIcons.LockAlert, R.string.shell_lock_badge_ignored)
-            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, green.copy(alpha = 0.22f), green, BunnyIcons.Lock, R.string.shell_lock_badge_locked)
-            else -> LockBadgeStyle(MaterialShapes.Cookie6Sided, colors.surfaceContainerHighest, colors.onSurfaceVariant, BunnyIcons.LockOpen, R.string.shell_lock_badge_unlocked)
+            ignored -> LockBadgeStyle(MaterialShapes.SoftBurst, colors.error.copy(alpha = 0.2f), colors.error, BunnyIcons.LockAlert, "Lock ignored")
+            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, green.copy(alpha = 0.22f), green, BunnyIcons.Lock, "Locked")
+            else -> LockBadgeStyle(MaterialShapes.Cookie6Sided, colors.surfaceContainerHighest, colors.onSurfaceVariant, BunnyIcons.LockOpen, "Unlocked")
         }
     val containerColor by animateColorAsState(style.container, label = "badge")
     val angle =
@@ -320,7 +318,7 @@ fun LockBadge(
                 .clip(style.shape.toShape())
                 .background(containerColor),
         )
-        Icon(style.icon, contentDescription = stringResource(style.description), tint = style.content, modifier = Modifier.size(size * 0.45f))
+        Icon(style.icon, contentDescription = style.description, tint = style.content, modifier = Modifier.size(size * 0.45f))
     }
 }
 
@@ -329,7 +327,7 @@ private class LockBadgeStyle(
     val container: Color,
     val content: Color,
     val icon: ImageVector,
-    @StringRes val description: Int,
+    val description: String,
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

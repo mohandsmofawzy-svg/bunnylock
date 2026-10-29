@@ -2,8 +2,6 @@
 
 package dev.ririxi.bunnylock.ui
 
-import androidx.annotation.StringRes
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,9 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
@@ -67,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -77,42 +72,31 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.data.Release
-import dev.ririxi.bunnylock.data.GameModeService
 import dev.ririxi.bunnylock.modem.Access
-import dev.ririxi.bunnylock.modem.GameModeOperatingState
-import dev.ririxi.bunnylock.modem.GameModePolicy
 import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.modem.SimInfo
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 private val LIVE_REFRESH_PAUSE = 500.milliseconds
-private val GAME_MODE_STABLE_REFRESH_PAUSE = GameModePolicy.STABLE_MODE_CHECK_INTERVAL_MILLIS.milliseconds
-private val GAME_MODE_RECOVERY_REFRESH_PAUSE = GameModePolicy.RECOVERY_MODE_CHECK_INTERVAL_MILLIS.milliseconds
 
 enum class Tab(
-    @StringRes val label: Int,
+    val label: String,
     val icon: ImageVector,
 ) {
-    HOME(R.string.shell_tab_home, Icons.Rounded.Home),
-    BANDS(R.string.shell_tab_bands, BunnyIcons.Bands),
-    CELL(R.string.shell_tab_cell, BunnyIcons.Tower),
-    PROFILES(R.string.shell_tab_profiles, Icons.Rounded.Star),
-    TOOLS(R.string.shell_tab_tools, Icons.Rounded.Build),
+    HOME("Home", Icons.Rounded.Home),
+    BANDS("Bands", BunnyIcons.Bands),
+    CELL("Cell lock", BunnyIcons.Tower),
+    TOOLS("Tools", Icons.Rounded.Build),
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BunnyApp(vm: MainViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val activity = LocalActivity.current
-    var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(Tab.HOME) }
-    if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) {
-        LiveRefresh(vm, state.gameModeEnabled)
-    }
+    if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) LiveRefresh(vm)
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
@@ -130,25 +114,17 @@ fun BunnyApp(vm: MainViewModel) {
                 subtitle = { Text(topBarSubtitle(state)) },
                 actions = {
                     if (state.modem.sims.size > 1) {
-                        SimChip(
-                            state.modem.sims,
-                            state.modem.sim,
-                            enabled = !state.busy,
-                            onSelect = vm::setSim,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
+                        SimChip(state.modem.sims, state.modem.sim, enabled = !state.busy, onSelect = vm::setSim)
                     }
-                    if (state.modem.root !is RootState.Denied) {
-                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            when {
-                                state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
-                                    LoadingIndicator(Modifier.size(36.dp))
-                                }
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        when {
+                            state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
+                                LoadingIndicator(Modifier.size(36.dp))
+                            }
 
-                                state.modem.root == RootState.Granted -> {
-                                    IconButton(onClick = vm::refresh) {
-                                        Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.shell_refresh))
-                                    }
+                            state.modem.root == RootState.Granted -> {
+                                IconButton(onClick = vm::refresh) {
+                                    Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
                                 }
                             }
                         }
@@ -170,7 +146,7 @@ fun BunnyApp(vm: MainViewModel) {
                             selected = selectedTab == tab,
                             onClick = { selectedTab = tab },
                             icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(stringResource(tab.label)) },
+                            label = { Text(tab.label) },
                         )
                     }
                 }
@@ -189,16 +165,15 @@ fun BunnyApp(vm: MainViewModel) {
             is RootState.Denied -> {
                 Centered(innerPadding) {
                     DroopyBunny()
-                    Text(stringResource(R.string.shell_denied_title), style = MaterialTheme.typography.headlineMediumEmphasized)
+                    Text("Root or Shizuku needed", style = MaterialTheme.typography.headlineMediumEmphasized)
                     Text(
                         root.reason,
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = vm::connect, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.shell_try_again)) }
-                    TextButton(onClick = vm::copyDiagnostics, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.common_copy_diagnostics)) }
-                    DeviceSpoofingCard(state.deviceSpoofing, vm::setDeviceSpoofing, vm::selectDeviceRefreshRate)
+                    Button(onClick = vm::connect, shapes = ButtonDefaults.shapes()) { Text("Try again") }
+                    TextButton(onClick = vm::copyDiagnostics, shapes = ButtonDefaults.shapes()) { Text("Copy diagnostics") }
                 }
             }
 
@@ -232,34 +207,12 @@ fun BunnyApp(vm: MainViewModel) {
                             Tab.HOME -> HomeScreen(state, vm, contentPadding) { selectedTab = it }
                             Tab.BANDS -> BandsScreen(state, vm, contentPadding)
                             Tab.CELL -> CellScreen(state, vm, contentPadding)
-                            Tab.PROFILES -> ProfilesScreen(state, vm, contentPadding, onExit = { showExitConfirmation = true })
                             Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
                         }
                     }
                 }
             }
         }
-    }
-
-    if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showExitConfirmation = false },
-            title = { Text(stringResource(R.string.tools_exit)) },
-            text = { Text(stringResource(R.string.tools_exit_confirmation)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showExitConfirmation = false
-                        vm.exitApplication { activity?.finishAndRemoveTask() }
-                    },
-                ) { Text(stringResource(R.string.tools_exit)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitConfirmation = false }) {
-                    Text(stringResource(R.string.tools_exit_cancel))
-                }
-            },
-        )
     }
 }
 
@@ -272,10 +225,10 @@ private fun UpdateDialog(
     val uriHandler = LocalUriHandler.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.shell_update_title)) },
+        title = { Text("Update available") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.shell_update_message, release.version))
+                Text("Version ${release.version} is out.")
                 if (release.notes.isNotEmpty()) Text(release.notes, style = MaterialTheme.typography.bodyMedium)
             }
         },
@@ -288,10 +241,10 @@ private fun UpdateDialog(
                     },
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.shell_update_download)) }
+                ) { Text("Download") }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onSkip, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.shell_update_skip)) }
-                    TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.shell_update_later)) }
+                    TextButton(onClick = onSkip, shapes = ButtonDefaults.shapes()) { Text("Skip this version") }
+                    TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Later") }
                 }
             }
         },
@@ -299,41 +252,22 @@ private fun UpdateDialog(
 }
 
 @Composable
-private fun LiveRefresh(
-    vm: MainViewModel,
-    gameModeEnabled: Boolean,
-) {
+private fun LiveRefresh(vm: MainViewModel) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle, gameModeEnabled) {
-        try {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                GameModeService.setUiMonitoring(true)
-                try {
-                    while (true) {
-                        vm.refreshConnection()
-                        delay(
-                            when {
-                                !gameModeEnabled -> LIVE_REFRESH_PAUSE
-                                vm.gameModeOperatingState == GameModeOperatingState.RECOVERY -> GAME_MODE_RECOVERY_REFRESH_PAUSE
-                                else -> GAME_MODE_STABLE_REFRESH_PAUSE
-                            },
-                        )
-                    }
-                } finally {
-                    GameModeService.setUiMonitoring(false)
-                }
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                vm.refreshConnection()
+                delay(LIVE_REFRESH_PAUSE)
             }
-        } finally {
-            GameModeService.setUiMonitoring(false)
         }
     }
 }
 
-@Composable
 private fun topBarSubtitle(state: UiState): String {
     val throughShizuku = state.modem.access == Access.SHIZUKU_ADB || state.modem.access == Access.SHIZUKU_ROOT
-    val purpose = stringResource(state.modem.backend?.label ?: R.string.shell_subtitle_default)
-    return if (throughShizuku) stringResource(R.string.shell_subtitle_shizuku, purpose) else purpose
+    val accessSuffix = if (throughShizuku) ", through Shizuku" else ""
+    return (state.modem.backend?.label ?: "Band and cell locking") + accessSuffix
 }
 
 /** [selected] counts from 1. */
@@ -343,18 +277,16 @@ private fun SimChip(
     selected: Int,
     enabled: Boolean,
     onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val current = sims.firstOrNull { it.slot + 1 == selected } ?: return
-    val chipDescription = stringResource(R.string.shell_sim_chip_description, selected, current.name)
-    Box(modifier) {
+    Box {
         FilledTonalButton(
             onClick = { expanded = true },
             enabled = enabled,
             shapes = ButtonDefaults.shapes(),
             contentPadding = PaddingValues(start = 8.dp, end = 6.dp),
-            modifier = Modifier.semantics { contentDescription = chipDescription },
+            modifier = Modifier.semantics { contentDescription = "SIM $selected, ${current.name}. Switch SIM" },
         ) {
             SimNumber(selected)
             Spacer(Modifier.width(8.dp))
@@ -365,9 +297,9 @@ private fun SimChip(
             sims.forEach { sim ->
                 val number = sim.slot + 1
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.shell_sim_menu_item, number, sim.name)) },
+                    text = { Text("SIM $number: ${sim.name}") },
                     leadingIcon = { SimNumber(number) },
-                    trailingIcon = { if (number == selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.shell_sim_selected)) },
+                    trailingIcon = { if (number == selected) Icon(Icons.Rounded.Check, contentDescription = "Selected") },
                     onClick = {
                         expanded = false
                         if (number != selected) onSelect(number)
@@ -394,11 +326,7 @@ private fun Centered(
     content: @Composable () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().padding(innerPadding).padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier.verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             content()
         }
     }

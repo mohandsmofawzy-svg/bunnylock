@@ -1,8 +1,6 @@
 package dev.ririxi.bunnylock.modem
 
-import android.content.Context
 import android.telephony.TelephonyManager
-import androidx.annotation.StringRes
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.data.Carrier
 import dev.ririxi.bunnylock.data.Cell
@@ -10,12 +8,12 @@ import dev.ririxi.bunnylock.data.Signal
 import org.json.JSONObject
 
 enum class Backend(
-    @StringRes val label: Int,
+    val label: String,
 ) {
-    QUALCOMM(R.string.backend_qualcomm),
-    MEDIATEK(R.string.backend_mediatek),
-    PIXEL(R.string.backend_pixel),
-    ANDROID(R.string.backend_android),
+    QUALCOMM("Qualcomm QMI"),
+    MEDIATEK("MediaTek AT"),
+    PIXEL("Pixel (Tensor NV)"),
+    ANDROID("Android radio HAL"),
 }
 
 enum class Group(
@@ -69,16 +67,16 @@ data class BandGroupState(
 
 /** Masks are TelephonyManager NETWORK_TYPE_BITMASK_* values. */
 enum class NetMode(
-    @StringRes val label: Int,
+    val label: String,
     val mask: Long,
 ) {
-    AUTO(R.string.net_mode_auto, Masks.G2 or Masks.G3 or Masks.G4 or Masks.G5 or Masks.CDMA),
-    NR_LTE(R.string.net_mode_nr_lte, Masks.G4 or Masks.G5),
-    NR_ONLY(R.string.net_mode_nr_only, Masks.G5),
-    LTE_ONLY(R.string.net_mode_lte_only, Masks.G4),
-    NO_NR(R.string.net_mode_no_nr, Masks.G2 or Masks.G3 or Masks.G4 or Masks.CDMA),
-    WCDMA_ONLY(R.string.net_mode_wcdma_only, Masks.G3),
-    GSM_ONLY(R.string.net_mode_gsm_only, Masks.G2),
+    AUTO("Auto", Masks.G2 or Masks.G3 or Masks.G4 or Masks.G5 or Masks.CDMA),
+    NR_LTE("5G and 4G", Masks.G4 or Masks.G5),
+    NR_ONLY("5G only", Masks.G5),
+    LTE_ONLY("4G only", Masks.G4),
+    NO_NR("No 5G", Masks.G2 or Masks.G3 or Masks.G4 or Masks.CDMA),
+    WCDMA_ONLY("3G only", Masks.G3),
+    GSM_ONLY("2G only", Masks.G2),
     ;
 
     companion object {
@@ -154,38 +152,48 @@ object Masks {
 
 /** QMI and Samsung both take the ordinal as the 5G mode number, so the order matters. */
 enum class NrMode(
-    @StringRes val label: Int,
+    val label: String,
 ) {
-    BOTH(R.string.nr_mode_both),
-    NSA(R.string.nr_mode_nsa),
-    SA(R.string.nr_mode_sa),
+    BOTH("SA and NSA"),
+    NSA("NSA only"),
+    SA("SA only"),
 }
 
 enum class LockRat(
-    @StringRes val label: Int,
+    val label: String,
 ) {
-    LTE(R.string.lock_rat_lte),
-    NR(R.string.lock_rat_nr),
-    NSA(R.string.lock_rat_nsa),
+    LTE("LTE"),
+    NR("5G NR"),
+    NSA("LTE and NR"),
 }
 
 /** "26201" -> "262 01", "310260" -> "310 260". */
 fun formatPlmn(numeric: String): String =
     if (numeric.length >= 5) numeric.substring(0, 3) + " " + numeric.substring(3) else numeric
 
-fun Context.andList(items: List<String>): String = joinNatural(items, R.string.list_and)
-
-fun Context.orList(items: List<String>): String = joinNatural(items, R.string.list_or)
-
-private fun Context.joinNatural(
-    items: List<String>,
-    @StringRes last: Int,
-): String =
-    if (items.size <= 1) {
-        items.joinToString("")
-    } else {
-        getString(last, items.dropLast(1).joinToString(getString(R.string.list_separator)), items.last())
+/** Operator name with MCC MNC, or whichever part is known. */
+fun plmnDisplay(
+    numeric: String?,
+    name: String?,
+): String {
+    val formatted = numeric?.let(::formatPlmn)
+    return when {
+        !name.isNullOrBlank() && formatted != null -> "$name ($formatted)"
+        !name.isNullOrBlank() -> name
+        formatted != null -> formatted
+        else -> "Unknown"
     }
+}
+
+fun andList(items: List<String>): String = joinNatural(items, "and")
+
+fun orList(items: List<String>): String = joinNatural(items, "or")
+
+private fun joinNatural(
+    items: List<String>,
+    word: String,
+): String =
+    if (items.size <= 1) items.joinToString("") else items.dropLast(1).joinToString(", ") + " $word " + items.last()
 
 data class SimInfo(
     val slot: Int,
@@ -210,21 +218,20 @@ data class DeviceInfo(
     val aospNrDc: Boolean,
     /** MediaTek's phoneEx AT passthrough, usable without root. */
     val mtkOemHook: Boolean,
-    val mtkOemHookStatus: Text?,
-    val mtkOemHookChecked: List<Text>,
+    val mtkOemHookStatus: String,
+    val mtkOemHookChecked: List<String>,
     /** Samsung's ISemTelephony 5G mode control (works without root). */
     val samsungNrMode: Boolean,
 ) {
-    @get:StringRes
     val vendorLabel
         get() =
             when (vendor) {
-                "qualcomm" -> R.string.vendor_qualcomm
-                "mediatek" -> R.string.vendor_mediatek
-                "tensor" -> R.string.vendor_tensor
-                "exynos" -> R.string.vendor_exynos
-                "unisoc" -> R.string.vendor_unisoc
-                else -> R.string.vendor_unknown
+                "qualcomm" -> "Qualcomm Snapdragon"
+                "mediatek" -> "MediaTek"
+                "tensor" -> "Google Tensor (Shannon modem)"
+                "exynos" -> "Samsung Exynos (Shannon modem)"
+                "unisoc" -> "Unisoc"
+                else -> "Unknown modem"
             }
 
     private val hasMediatekAtPort get() = atNodes.any { it.startsWith("/dev/radio") || it == "/dev/ttyC0" }
@@ -261,8 +268,8 @@ data class DeviceInfo(
                 aospChannels = json.optBoolean("aospChannels"),
                 aospNrDc = json.optBoolean("aospNrDc"),
                 mtkOemHook = json.optBoolean("mtkOemHook"),
-                mtkOemHookStatus = json.optText("mtkOemHookStatus"),
-                mtkOemHookChecked = json.optTexts("mtkOemHookChecked"),
+                mtkOemHookStatus = json.optString("mtkOemHookStatus"),
+                mtkOemHookChecked = json.stringList("mtkOemHookChecked"),
                 samsungNrMode = json.optBoolean("samsungNrMode"),
             )
 
@@ -322,12 +329,12 @@ data class ModemState(
     val mtkCellLockRefused: Boolean = false,
     /** e.g. "262 01". Null when selection is automatic. */
     val plmnLock: String? = null,
-    /** True only when the latest modem/framework read explicitly reported network-selection mode. */
-    val plmnLockKnown: Boolean = false,
     val registeredPlmn: String? = null,
     val registeredName: String? = null,
     val homePlmn: String? = null,
     val homeName: String? = null,
+    /** Null when Android has not reported a roaming flag for this SIM. */
+    val roaming: Boolean? = null,
     val persist: Boolean = true,
     val atNode: String = "",
     val log: List<String> = emptyList(),
@@ -353,13 +360,14 @@ data class ModemState(
     fun allows(candidate: Backend): Boolean = device?.allows(candidate, limited) == true
 
     /** The networks worth offering for a lock, as PLMN to operator name: home first, then the current one, then every visible one. */
-    fun plmnPicks(context: Context): List<Pair<String, String>> {
-        val picks = LinkedHashMap<String, String>()
-        homePlmn?.let { picks[it] = homeName ?: context.getString(R.string.plmn_home) }
-        registeredPlmn?.let { picks.putIfAbsent(it, registeredName ?: context.getString(R.string.plmn_current)) }
-        cells.forEach { cell -> cell.plmn?.let { picks.putIfAbsent(it, cell.operator ?: context.getString(R.string.plmn_visible)) } }
-        return picks.toList()
-    }
+    val plmnPicks: List<Pair<String, String>>
+        get() {
+            val picks = LinkedHashMap<String, String>()
+            homePlmn?.let { picks[it] = homeName ?: "Home" }
+            registeredPlmn?.let { picks.putIfAbsent(it, registeredName ?: "Current") }
+            cells.forEach { cell -> cell.plmn?.let { picks.putIfAbsent(it, cell.operator ?: "Visible") } }
+            return picks.toList()
+        }
 
     val supports5g: Boolean
         get() {
@@ -402,20 +410,18 @@ data class CellLockRequest(
 
 class ModemException(
     override val message: String,
-    val text: Text? = null,
 ) : Exception(message)
 
 fun String.asSentence(): String {
     val text = trim().replaceFirstChar { it.uppercase() }
-    if (text.isEmpty() || text.last() in ".?!。？！") return text
-    return if (text.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN }) "$text。" else "$text."
+    return if (text.endsWith('.') || text.endsWith('?') || text.endsWith('!')) text else "$text."
 }
 
 /** For quoting a message inside a sentence: no final period, and no capital unless the first word is an acronym. */
 fun String.asClause(): String {
-    val text = trim().trimEnd('.', '。')
+    val text = trim().trimEnd('.')
     val startsWithCapitalisedWord = text.length > 1 && text[0].isUpperCase() && text[1].isLowerCase()
     return if (startsWithCapitalisedWord) text[0].lowercase() + text.substring(1) else text
 }
 
-fun Context.reason(e: Exception): String = e.message?.takeIf { it.isNotBlank() }?.asSentence() ?: getString(R.string.something_went_wrong)
+fun reason(e: Exception): String = e.message?.takeIf { it.isNotBlank() }?.asSentence() ?: "Something went wrong."
