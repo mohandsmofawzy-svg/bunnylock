@@ -14,5 +14,8 @@
         android:pathData="M54,42 C39,42 28,53 28,67 C28,78 39,86 54,86 C69,86 80,78 80,67 C80,53 69,42 54,42 Z" />
     <path
         android:fillColor="@color/icon_bg"
-        android:pathData="M43,64 A2.5,2.5 0 1 0 48,64 A2.5,2.5 0 1 0 43,64 M60,64 A2.5,2.5 0 1 0 65,64 A2.5,2.5 0 1 0 60,64 M50,70 Q54,74 58,70 Q55,78 50,70 Z" />
+        android:pathData="M40,58 L51,61 L47,67 L41,64 Z M68,58 L57,61 L61,67 L67,64 Z M43,69 C48,74 60,74 65,68 C64,79 58,84 53,82 C48,80 45,75 43,69 Z" />
+    <path
+        android:fillColor="@color/icon_detail"
+        android:pathData="M46,71 C50,74 58,74 62,71 L60,75 C55,77 50,76 48,74 Z" />
 </vector>

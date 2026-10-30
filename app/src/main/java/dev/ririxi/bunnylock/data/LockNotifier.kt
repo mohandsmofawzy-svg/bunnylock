@@ -14,7 +14,6 @@ import dev.ririxi.bunnylock.R
 
 object LockNotifier {
     const val ACTION_UNLOCK_ALL = "dev.ririxi.bunnylock.action.UNLOCK_ALL"
-    const val ACTION_LOCK_BAND = "dev.ririxi.bunnylock.action.LOCK_BAND"
     private const val CHANNEL_ID = "locks"
     private const val NOTIFICATION_ID = 1
 
@@ -47,17 +46,10 @@ object LockNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val unlockAll =
-            PendingIntent.getForegroundService(
+            PendingIntent.getActivity(
                 context,
                 1,
-                Intent(context, LockActionService::class.java).setAction(ACTION_UNLOCK_ALL),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-        val lockBand =
-            PendingIntent.getForegroundService(
-                context,
-                2,
-                Intent(context, LockActionService::class.java).setAction(ACTION_LOCK_BAND),
+                Intent(context, MainActivity::class.java).setAction(ACTION_UNLOCK_ALL).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val notification =
@@ -73,8 +65,7 @@ object LockNotifier {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openApp)
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.notification_lock_band), lockBand).build())
-                .addAction(Notification.Action.Builder(null, context.getString(R.string.notification_unlock_all), unlockAll).build())
+                .addAction(Notification.Action.Builder(null, "Unlock all", unlockAll).build())
                 .build()
         manager(context).notify(NOTIFICATION_ID, notification)
     }

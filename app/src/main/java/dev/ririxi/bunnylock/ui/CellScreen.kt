@@ -23,7 +23,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.ririxi.bunnylock.core.Bands
 import dev.ririxi.bunnylock.data.Cell
@@ -43,22 +45,7 @@ fun CellScreen(
 ) {
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            SectionHeader("Network (PLMN)")
-            Segmented {
-                item {
-                    LockStatusItem(
-                        it,
-                        locked = state.modem.anyPlmnLock,
-                        title = plmnLockTitle(state),
-                        description = registrationText(state),
-                    )
-                }
-                item { Panel(shape = it.shape) { PlmnForm(state, vm) } }
-            }
-        }
-
-        item {
-            SectionHeader("Current cell lock")
+            SectionHeader("Cell-lock status")
             Segmented {
                 item {
                     LockStatusItem(
@@ -69,28 +56,37 @@ fun CellScreen(
                         description = cellLockDescription(state),
                     )
                 }
-                state.modem.lteLock?.let { lock -> item { InfoItem(it, "LTE", lock) } }
-                state.modem.nrLock?.let { lock -> item { InfoItem(it, "NR", lock) } }
-                state.modem.legacyCellLock?.let { lock -> item { InfoItem(it, "2G/3G", lock) } }
-                if (state.modem.anyCellLock) {
-                    item { shapes ->
-                        SegmentedListItem(
-                            onClick = vm::unlockCells,
-                            enabled = !state.busy,
-                            shapes = shapes,
-                            colors = segmentColors(),
-                            leadingContent = {
-                                Icon(BunnyIcons.LockOpen, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            },
-                        ) { Text("Clear cell lock", color = MaterialTheme.colorScheme.error) }
+            }
+            val activeCells =
+                listOfNotNull(
+                    state.modem.lteLock?.let { "LTE" to it },
+                    state.modem.nrLock?.let { "NR" to it },
+                    state.modem.legacyCellLock?.let { "2G/3G" to it },
+                )
+            if (activeCells.isNotEmpty()) {
+                Panel {
+                    activeCells.forEach { (label, value) ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.weight(1f))
+                            Text(value, style = MaterialTheme.typography.bodyMediumEmphasized, textAlign = TextAlign.End)
+                        }
                     }
                 }
             }
-        }
-
-        item {
-            SectionHeader("Lock to")
-            CellLockForm(state, vm)
+            if (state.modem.anyCellLock) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    OutlinedButton(
+                        onClick = vm::unlockCells,
+                        enabled = !state.busy && !state.modem.simSelectionRequired,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Icon(BunnyIcons.LockOpen, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Clear cell lock", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
         }
 
         item {
@@ -98,11 +94,37 @@ fun CellScreen(
                 state.modem.cells
                     .filter { it.rat == Rat.LTE || it.rat == Rat.NR }
                     .sortedWith(compareByDescending<Cell> { it.registered }.thenByDescending { it.rat.ordinal }.thenBy { it.arfcn }.thenBy { it.pci })
-            SectionHeader("Visible cells (tap one to fill in)")
+            SectionHeader("Nearby cells")
+            Text(
+                "Tap a cell to use its channel and PCI in the lock form below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
             if (lockableCells.isEmpty()) {
                 Panel { SleepyBunny("No cells found", "Cell scans need location access.") }
             } else {
                 Segmented { lockableCells.forEach { cell -> item { shapes -> CellItem(shapes, cell) { vm.fillFrom(cell) } } } }
+            }
+        }
+
+        item {
+            SectionHeader("Build a cell lock")
+            CellLockForm(state, vm)
+        }
+
+        item {
+            SectionHeader("Network selection")
+            Segmented {
+                item {
+                    LockStatusItem(
+                        it,
+                        locked = state.modem.anyPlmnLock,
+                        title = plmnLockTitle(state),
+                        description = registrationText(state),
+                    )
+                }
+                item { Panel(shape = it.shape) { PlmnForm(state, vm) } }
             }
         }
     }
@@ -163,6 +185,7 @@ private fun PlmnForm(
             label = { Text("MCC") },
             singleLine = true,
             keyboardOptions = NumberKeyboard,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
         )
         OutlinedTextField(
@@ -171,6 +194,7 @@ private fun PlmnForm(
             label = { Text("MNC") },
             singleLine = true,
             keyboardOptions = NumberKeyboard,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
         )
     }
@@ -195,13 +219,13 @@ private fun PlmnForm(
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(
             onClick = vm::unlockPlmn,
-            enabled = !state.busy && state.modem.anyPlmnLock,
+            enabled = !state.busy && !state.modem.simSelectionRequired && state.modem.anyPlmnLock,
             shapes = ButtonDefaults.shapes(),
             modifier = Modifier.weight(1f),
         ) { Text("Automatic") }
         Button(
             onClick = vm::lockPlmn,
-            enabled = !state.busy && plmnComplete,
+            enabled = !state.busy && !state.modem.simSelectionRequired && plmnComplete,
             shapes = ButtonDefaults.shapes(),
             modifier = Modifier.weight(1f),
         ) {
@@ -265,7 +289,7 @@ private fun CellLockForm(
         val buttonHeight = ButtonDefaults.MediumContainerHeight
         Button(
             onClick = vm::lockCells,
-            enabled = !state.busy,
+            enabled = !state.busy && !state.modem.simSelectionRequired,
             shapes = ButtonDefaults.shapes(),
             contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight),
             modifier = Modifier.fillMaxWidth().height(buttonHeight).padding(top = 4.dp),
@@ -291,6 +315,7 @@ private fun LteLockFields(
             label = { Text("EARFCN") },
             singleLine = true,
             keyboardOptions = NumberKeyboard,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
             supportingText = { form.lteEarfcn.toIntOrNull()?.let { Text(lteChannelHint(it)) } },
         )
@@ -299,6 +324,7 @@ private fun LteLockFields(
             { text -> vm.updateForm { copy(ltePcis = pciInput(text)) } },
             label = { Text("PCIs") },
             singleLine = true,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
             enabled = state.modem.supportsPciLock,
         )
@@ -319,6 +345,7 @@ private fun NrLockFields(
             label = { Text("NR-ARFCN") },
             singleLine = true,
             keyboardOptions = NumberKeyboard,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
             supportingText = { form.nrArfcn.toIntOrNull()?.let { Text("%.2f MHz".format(Bands.nrFreqMhz(it))) } },
         )
@@ -327,6 +354,7 @@ private fun NrLockFields(
             { text -> vm.updateForm { copy(nrPcis = pciInput(text)) } },
             label = { Text("PCIs") },
             singleLine = true,
+            textStyle = ltrInputTextStyle(),
             modifier = Modifier.weight(1f),
             enabled = state.modem.supportsPciLock,
         )

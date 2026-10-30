@@ -61,7 +61,6 @@ object OemHook {
     private class Target(
         val label: String,
         val isAtMethod: Boolean,
-        val slotScoped: Boolean = false,
         val sendRaw: OemRequest,
     ) {
         /** Some vendor AT methods return only the response body. A missing final result then means OK. */
@@ -213,7 +212,7 @@ object OemHook {
                     it.takes(Int::class.javaPrimitiveType, ByteArray::class.java, ByteArray::class.java)
             }?.let { method ->
                 targets +=
-                    Target("$name.${method.name}", isAtMethod = false, slotScoped = true) { slot, request, response ->
+                    Target("$name.${method.name}", isAtMethod = false) { slot, request, response ->
                         method.invoke(service, slot, request, response) as Int
                     }
             }
@@ -233,22 +232,12 @@ object OemHook {
                     it.takes(Int::class.javaPrimitiveType, ByteArray::class.java, ByteArray::class.java)
             }?.let { method ->
                 targets +=
-                    Target("$name.${method.name}", isAtMethod = false, slotScoped = true) { slot, request, response ->
+                    Target("$name.${method.name}", isAtMethod = false) { slot, request, response ->
                         method.invoke(service, Aosp.resolveSubId(-1, slot), request, response) as Int
                     }
             }
         methods.filter { AT_METHOD.containsMatchIn(it.name) }.forEach { method ->
-            atAdapter(service, method)?.let {
-                targets +=
-                    Target(
-                        "$name.${signature(method)}",
-                        isAtMethod = true,
-                        slotScoped =
-                            method.name.contains("slot", ignoreCase = true) &&
-                                method.parameterTypes.firstOrNull() == Int::class.javaPrimitiveType,
-                        sendRaw = it,
-                    )
-            }
+            atAdapter(service, method)?.let { targets += Target("$name.${signature(method)}", isAtMethod = true, sendRaw = it) }
         }
         return targets
     }
@@ -284,23 +273,17 @@ object OemHook {
         val vendorServices =
             listOf(MEDIATEK_PHONE_SERVICE) +
                 serviceNames().filter { it != MEDIATEK_PHONE_SERVICE && it != PHONE_SERVICE && SERVICE_HINT.containsMatchIn(it) }
-        var fallback: Target? = null
         for (name in vendorServices) {
             val binder = serviceBinder(name) ?: continue
-            val candidates = candidatesOrNone(name, binder)
-            val found = candidates.filter { it.slotScoped }.firstOrNull(::tryTarget)
+            val found = candidatesOrNone(name, binder).firstOrNull(::tryTarget)
             if (found !== null) return found
-            if (fallback === null) fallback = candidates.filterNot { it.slotScoped }.firstOrNull(::tryTarget)
         }
         // ITelephony routes to the RIL's OEM hook. Only MediaTek's RIL answers it, others never reply.
         if (isMediatek()) {
             val phoneCandidates = serviceBinder(PHONE_SERVICE)?.let { candidatesOrNone(PHONE_SERVICE, it) }.orEmpty()
-            val candidates = phoneCandidates.filter { !it.isAtMethod }
-            val found = candidates.filter { it.slotScoped }.firstOrNull(::tryTarget)
+            val found = phoneCandidates.filter { !it.isAtMethod }.firstOrNull(::tryTarget)
             if (found !== null) return found
-            if (fallback === null) fallback = candidates.filterNot { it.slotScoped }.firstOrNull(::tryTarget)
         }
-        fallback?.let { return it }
         throw IOException("No OEM request passthrough answered on this phone.")
     }
 
@@ -310,8 +293,6 @@ object OemHook {
     }
 
     fun available(): Boolean = workingTarget !== null
-
-    fun supportsSlotRouting(): Boolean = workingTarget?.slotScoped == true
 
     fun status(): String {
         val working = workingTarget

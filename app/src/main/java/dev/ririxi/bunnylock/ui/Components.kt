@@ -3,6 +3,7 @@
 package dev.ririxi.bunnylock.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -10,8 +11,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,6 +26,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -43,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shape
@@ -53,6 +61,7 @@ import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -61,6 +70,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -69,7 +79,7 @@ import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.RoundedPolygon
 import dev.ririxi.bunnylock.R
 import dev.ririxi.bunnylock.data.Rat
-import dev.ririxi.bunnylock.ui.theme.LocalLockAccent
+import dev.ririxi.bunnylock.ui.theme.LocalLockGreen
 
 private val WordmarkFont =
     FontFamily(
@@ -86,11 +96,11 @@ fun Wordmark(
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
 ) {
-    val accent = LocalLockAccent.current
+    val green = LocalLockGreen.current
     Text(
         buildAnnotatedString {
             withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append("bunny") }
-            withStyle(SpanStyle(color = accent)) { append("lock") }
+            withStyle(SpanStyle(color = green)) { append("lock") }
         },
         modifier = modifier,
         style = style.copy(fontFamily = WordmarkFont, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
@@ -104,9 +114,9 @@ fun SectionHeader(
 ) {
     Text(
         text,
-        modifier = modifier.padding(start = 20.dp, top = 12.dp, bottom = 2.dp),
-        style = MaterialTheme.typography.titleSmallEmphasized,
-        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(start = 8.dp, top = 18.dp, bottom = 4.dp),
+        style = MaterialTheme.typography.titleMediumEmphasized,
+        color = MaterialTheme.colorScheme.onSurface,
     )
 }
 
@@ -146,10 +156,13 @@ fun Panel(
     padding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(modifier.fillMaxWidth(), shape = shape, color = PanelColor) {
-        Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    Surface(modifier.fillMaxWidth(), shape = shape, color = PanelColor, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))) {
+        Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }
+
+@Composable
+fun ltrInputTextStyle(): TextStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr)
 
 @Composable
 fun InfoItem(
@@ -262,6 +275,100 @@ fun <T> ToggleGrid(
     }
 }
 
+@Composable
+fun BandCircleGrid(
+    options: List<Int>,
+    isChecked: (Int) -> Boolean,
+    label: (Int) -> String,
+    detail: (Int) -> String,
+    onToggle: (Int) -> Unit,
+    enabled: Boolean,
+    accent: Boolean = false,
+) {
+    val scheme = MaterialTheme.colorScheme
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val columns = (maxWidth / 112.dp).toInt().coerceIn(2, 4)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.chunked(columns).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { band ->
+                        val checked = isChecked(band)
+                        val container by animateColorAsState(
+                            when {
+                                checked && accent -> scheme.tertiaryContainer
+                                checked -> scheme.primaryContainer
+                                else -> scheme.surfaceContainerLow
+                            },
+                            label = "band circle container",
+                        )
+                        val content by animateColorAsState(
+                            when {
+                                checked && accent -> scheme.onTertiaryContainer
+                                checked -> scheme.onPrimaryContainer
+                                else -> scheme.onSurfaceVariant
+                            },
+                            label = "band circle content",
+                        )
+                        val outline by animateColorAsState(
+                            when {
+                                checked && accent -> scheme.tertiary
+                                checked -> scheme.primary
+                                else -> scheme.outlineVariant
+                            },
+                            label = "band circle border",
+                        )
+                        val scale by animateFloatAsState(if (checked) 1.025f else 1f, label = "band circle scale")
+                        Surface(
+                            onClick = { onToggle(band) },
+                            enabled = enabled,
+                            shape = RoundedCornerShape(14.dp),
+                            color = container,
+                            contentColor = content,
+                            border = BorderStroke(if (checked) 1.5.dp else 1.dp, outline),
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1.48f)
+                                    .scale(scale)
+                                    .semantics {
+                                        selected = checked
+                                        role = Role.Checkbox
+                                    },
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(label(band), style = MaterialTheme.typography.titleSmallEmphasized, maxLines = 1)
+                                        Text(
+                                            detail(band),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = content.copy(alpha = if (checked) 0.9f else 0.72f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    if (checked) {
+                                        Icon(
+                                            if (accent) Icons.Rounded.Star else Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
 private const val BADGE_FULL_TURN_MILLIS = 14_000
 private const val BADGE_WOBBLE_MILLIS = 1_400
 private const val BADGE_WOBBLE_DEGREES = 10f
@@ -274,12 +381,12 @@ fun LockBadge(
     spin: Boolean = false,
     ignored: Boolean = false,
 ) {
-    val accent = LocalLockAccent.current
+    val green = LocalLockGreen.current
     val colors = MaterialTheme.colorScheme
     val style =
         when {
             ignored -> LockBadgeStyle(MaterialShapes.SoftBurst, colors.error.copy(alpha = 0.2f), colors.error, BunnyIcons.LockAlert, "Lock ignored")
-            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, accent.copy(alpha = 0.22f), accent, BunnyIcons.Lock, "Locked")
+            locked -> LockBadgeStyle(MaterialShapes.Cookie9Sided, green.copy(alpha = 0.22f), green, BunnyIcons.Lock, "Locked")
             else -> LockBadgeStyle(MaterialShapes.Cookie6Sided, colors.surfaceContainerHighest, colors.onSurfaceVariant, BunnyIcons.LockOpen, "Unlocked")
         }
     val containerColor by animateColorAsState(style.container, label = "badge")
@@ -493,13 +600,18 @@ object BunnyIcons {
             arcToRelative(6f, 6f, 0f, true, true, 12f, 0f)
             arcToRelative(6f, 6f, 0f, true, true, -12f, 0f)
             close()
-            moveTo(8.8f, 15f)
-            arcToRelative(1f, 1f, 0f, true, true, 2f, 0f)
-            arcToRelative(1f, 1f, 0f, true, true, -2f, 0f)
+            moveTo(8f, 11.5f)
+            lineTo(11f, 12.2f)
+            lineTo(9.4f, 13.8f)
             close()
-            moveTo(13.2f, 15f)
-            arcToRelative(1f, 1f, 0f, true, true, 2f, 0f)
-            arcToRelative(1f, 1f, 0f, true, true, -2f, 0f)
+            moveTo(16f, 12.2f)
+            lineTo(19f, 11.5f)
+            lineTo(17.6f, 13.8f)
+            close()
+            moveTo(8.4f, 15f)
+            curveTo(10.3f, 17.1f, 14.8f, 17.1f, 17f, 14.7f)
+            curveTo(16.5f, 19.2f, 13.8f, 21f, 11.8f, 19.7f)
+            curveTo(10f, 18.8f, 8.9f, 17f, 8.4f, 15f)
             close()
         }
     }

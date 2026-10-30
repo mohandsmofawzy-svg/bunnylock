@@ -1,7 +1,3 @@
 <resources>
     <string name="app_name">bunnylock</string>
-    <string name="notification_lock_band">Lock Band</string>
-    <string name="notification_unlock_all">Unlock all</string>
-    <string name="notification_action_locking">Applying saved band lock...</string>
-    <string name="notification_action_unlocking">Unlocking all locks...</string>
 </resources>

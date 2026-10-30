@@ -65,6 +65,18 @@ data class BandGroupState(
     val allowed get() = current ?: supported.toSet()
 }
 
+enum class LockStatus {
+    UNKNOWN,
+    CLEAR,
+    ACTIVE,
+}
+
+enum class NetworkSelectionMode {
+    UNKNOWN,
+    AUTOMATIC,
+    MANUAL,
+}
+
 /** Masks are TelephonyManager NETWORK_TYPE_BITMASK_* values. */
 enum class NetMode(
     val label: String,
@@ -216,9 +228,8 @@ data class DeviceInfo(
     val samsungMenu: Boolean,
     val aospChannels: Boolean,
     val aospNrDc: Boolean,
-    /** A MediaTek AT/OEM passthrough, usable without root. */
+    /** MediaTek's phoneEx AT passthrough, usable without root. */
     val mtkOemHook: Boolean,
-    val mtkOemHookSlotScoped: Boolean,
     val mtkOemHookStatus: String,
     val mtkOemHookChecked: List<String>,
     /** Samsung's ISemTelephony 5G mode control (works without root). */
@@ -269,7 +280,6 @@ data class DeviceInfo(
                 aospChannels = json.optBoolean("aospChannels"),
                 aospNrDc = json.optBoolean("aospNrDc"),
                 mtkOemHook = json.optBoolean("mtkOemHook"),
-                mtkOemHookSlotScoped = json.optBoolean("mtkOemHookSlotScoped"),
                 mtkOemHookStatus = json.optString("mtkOemHookStatus"),
                 mtkOemHookChecked = json.stringList("mtkOemHookChecked"),
                 samsungNrMode = json.optBoolean("samsungNrMode"),
@@ -309,7 +319,12 @@ data class ModemState(
     val sims: List<SimInfo> = emptyList(),
     /** Counted from 1 as users see it, so one more than the SIM's slot index. */
     val sim: Int = 1,
+    /** A saved subscription could not be matched reliably; modem operations stay blocked until the user picks a SIM. */
+    val simSelectionRequired: Boolean = false,
+    val savedSimName: String? = null,
     val refreshing: Boolean = false,
+    /** True only when the latest full modem refresh completed; false prevents consumers using stale readback. */
+    val readbackValid: Boolean = false,
     val groups: List<BandGroupState> = emptyList(),
     val allowedMask: Long? = null,
     val supportedTypes: Long? = null,
@@ -323,14 +338,16 @@ data class ModemState(
     val signals: List<Signal> = emptyList(),
     val lteLock: String? = null,
     val nrLock: String? = null,
+    val cellLockStatus: LockStatus = LockStatus.UNKNOWN,
     /** A 2G or 3G cell lock. bunnylock doesn't set these, but a MediaTek modem may hold one made elsewhere. */
     val legacyCellLock: String? = null,
     /** e.g. "EARFCN 75": the channel the phone is camped on although a frequency lock excludes it. */
     val strayChannel: String? = null,
     /** The MediaTek modem doesn't take AT+EMMCHLCK, so a cell lock has to go through the radio HAL. */
     val mtkCellLockRefused: Boolean = false,
-    /** e.g. "262 01". Null when selection is automatic. */
+    /** Manually selected operator (for example "262 01"); independent of band selection. Null when automatic. */
     val plmnLock: String? = null,
+    val networkSelectionMode: NetworkSelectionMode = NetworkSelectionMode.UNKNOWN,
     val registeredPlmn: String? = null,
     val registeredName: String? = null,
     val homePlmn: String? = null,

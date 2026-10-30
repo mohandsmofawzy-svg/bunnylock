@@ -74,7 +74,6 @@ object Sys {
             .put("aospChannels", runCatching { Aosp.hasMethod("setSystemSelectionChannels", 3) }.getOrDefault(false))
             .put("aospNrDc", runCatching { Aosp.nrDcConfigurable() }.getOrDefault(false))
             .put("mtkOemHook", runCatching { OemHook.available() }.getOrDefault(false))
-            .put("mtkOemHookSlotScoped", runCatching { OemHook.supportsSlotRouting() }.getOrDefault(false))
             .put("samsungNrMode", runCatching { Samsung.nrModeAvailable() }.getOrDefault(false))
             .put("mtkOemHookStatus", runCatching { OemHook.status() }.getOrElse { it.message.orEmpty() })
             .put("mtkOemHookChecked", JSONArray(runCatching { OemHook.diagnostics() }.getOrDefault(emptyList())))

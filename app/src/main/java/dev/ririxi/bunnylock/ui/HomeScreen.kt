@@ -53,7 +53,7 @@ import dev.ririxi.bunnylock.data.Signal
 import dev.ririxi.bunnylock.modem.ModemState
 import dev.ririxi.bunnylock.modem.andList
 import dev.ririxi.bunnylock.modem.formatPlmn
-import dev.ririxi.bunnylock.ui.theme.LocalLockAccent
+import dev.ririxi.bunnylock.ui.theme.LocalLockGreen
 import dev.ririxi.bunnylock.ui.theme.LocalSignalScale
 
 private val RSRP_STEPS = listOf(-80, -90, -100)
@@ -69,21 +69,68 @@ fun HomeScreen(
     goTo: (Tab) -> Unit,
 ) {
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { Hero(state, onUnlock = vm::unlockEverything, onBands = { goTo(Tab.BANDS) }, onCell = { goTo(Tab.CELL) }) }
-
         val carriers = state.modem.carriers
         item {
-            SectionHeader("Connection")
+            SectionHeader("Live network")
             if (carriers.isEmpty()) Panel { SleepyBunny("No serving cell") } else ConnectionCard(state.modem)
+        }
+
+        item {
+            Hero(state, onUnlock = vm::unlockEverything, onBands = { goTo(Tab.BANDS) }, onCell = { goTo(Tab.CELL) })
         }
 
         if (carriers.isNotEmpty()) {
             item {
                 val anchoredOnLte = carriers.any { it.primary && it.rat == Rat.LTE }
-                SectionHeader(if (carriers.size > 1) "Carriers" else "Carrier")
+                SectionHeader(if (carriers.size > 1) "Carrier composition" else "Serving carrier")
                 Segmented(Modifier.animateContentSize()) {
                     carriers.forEach { carrier -> item { shapes -> CarrierItem(shapes, carrier, anchoredOnLte) } }
                 }
+            }
+        }
+
+        item {
+            val monitor = state.watchdog
+            SectionHeader("Network diagnostics")
+            Panel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Game connection", style = MaterialTheme.typography.titleMediumEmphasized)
+                        val sample = monitor.lastSample
+                        Text(
+                            when {
+                                monitor.starting -> "Starting network monitor…"
+                                monitor.error != null -> monitor.error
+                                !monitor.running -> "Monitor stopped"
+                                sample == null -> "Waiting for the first sample…"
+                                else -> {
+                                    val rtt =
+                                        sample.avgRttMs?.let {
+                                            " · ${translateUiText("RTT", state.language)} $it ${translateUiText("ms", state.language)}"
+                                        }.orEmpty()
+                                    val jitter =
+                                        sample.jitterMs?.let {
+                                            " · ${translateUiText("jitter", state.language)} $it ${translateUiText("ms", state.language)}"
+                                        }.orEmpty()
+                                    "${translateUiText(sample.verdict.label, state.language)}$rtt$jitter"
+                                }
+                            },
+                            style = MaterialTheme.typography.bodyMediumEmphasized,
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = if (monitor.running || monitor.starting) vm::stopWatchdog else vm::startWatchdog,
+                        enabled = !monitor.starting,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Text(if (monitor.running || monitor.starting) "Stop" else "Monitor")
+                    }
+                }
+                Text(
+                    "Read-only checks; this does not change the modem, radio, or game process.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
@@ -118,19 +165,25 @@ private fun Hero(
         state.modem.strayBand?.let { "$it, outside the locked bands" }
             ?: state.modem.strayChannel?.let { "$it, off the locked frequency" }
     val lockHeld = locked && strayLocation === null
-    val accent = LocalLockAccent.current
+    val green = LocalLockGreen.current
     val containerColor by animateColorAsState(
         if (lockHeld) {
-            accent.copy(alpha = 0.2f).compositeOver(MaterialTheme.colorScheme.surfaceContainerHigh)
+            green.copy(alpha = 0.2f).compositeOver(MaterialTheme.colorScheme.surfaceContainerHigh)
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
         label = "hero",
     )
-    Surface(color = containerColor, shape = RoundedCornerShape(36.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(32.dp),
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
+                    Text("LOCK CONTROL", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         when {
                             strayLocation !== null -> "Ignored"
@@ -141,7 +194,7 @@ private fun Hero(
                         color =
                             when {
                                 strayLocation !== null -> MaterialTheme.colorScheme.error
-                                locked -> accent
+                                locked -> green
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
                     )
@@ -151,58 +204,48 @@ private fun Hero(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                BouncyLockBadge(locked = locked, ignored = strayLocation !== null, userAction = state.busy, size = 88.dp)
+                BouncyLockBadge(locked = locked, ignored = strayLocation !== null, userAction = state.busy, size = 68.dp)
             }
 
             val lockRows = activeLockRows(state)
             if (lockRows.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     lockRows.forEach { (label, value) ->
-                        Row {
-                            Text(label, style = MaterialTheme.typography.labelLargeEmphasized, modifier = Modifier.width(96.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(label, style = MaterialTheme.typography.labelLargeEmphasized, modifier = Modifier.width(104.dp))
                             Text(value, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val buttonHeight = ButtonDefaults.MediumContainerHeight
-                if (locked) {
-                    Button(
-                        onClick = onUnlock,
-                        enabled = !state.busy,
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.fillMaxWidth().height(buttonHeight),
-                        contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError,
-                            ),
-                    ) {
-                        Icon(
-                            BunnyIcons.LockOpen,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight)),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text("Unlock all", style = ButtonDefaults.textStyleFor(buttonHeight), maxLines = 1)
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = onBands, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
+                    Icon(BunnyIcons.Bands, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Band plan")
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
-                        onClick = onBands,
-                        shapes = ButtonDefaults.shapes(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError),
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Bands") }
-                    FilledTonalButton(
-                        onClick = onCell,
-                        shapes = ButtonDefaults.shapes(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError),
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Cell") }
+                FilledTonalButton(onClick = onCell, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
+                    Icon(BunnyIcons.Tower, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Cell lock")
+                }
+            }
+            if (locked) {
+                Button(
+                    onClick = onUnlock,
+                    enabled = !state.busy && !state.modem.simSelectionRequired,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                ) {
+                    Icon(BunnyIcons.LockOpen, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Unlock all")
                 }
             }
         }

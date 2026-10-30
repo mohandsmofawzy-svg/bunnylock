@@ -3,6 +3,7 @@
         <item name="android:windowBackground">@color/bg</item>
     </style>
     <color name="bg">#000000</color>
-    <color name="icon_fg">#B3435A</color>
+    <color name="icon_fg">#6F102A</color>
+    <color name="icon_detail">#C24A69</color>
     <color name="icon_bg">#000000</color>
 </resources>

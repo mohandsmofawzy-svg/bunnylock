@@ -89,9 +89,9 @@ private enum class BunnyPose(
 // The launcher icon's drawing, in its 108-unit canvas.
 private object BunnyPaths {
     private const val BODY = "M42,50 H66 A9,9 0 0 1 75,59 V73 A9,9 0 0 1 66,82 H42 A9,9 0 0 1 33,73 V59 A9,9 0 0 1 42,50 Z "
-    private const val OPEN_EYES = "M44.5,63 A2.75,2.75 0 1 0 50,63 A2.75,2.75 0 1 0 44.5,63 Z M58,63 A2.75,2.75 0 1 0 63.5,63 A2.75,2.75 0 1 0 58,63 Z "
+    private const val OPEN_EYES = "M43,60 L51,62 L47,66 L43,64 Z M60,62 L68,60 L67,64 L63,66 Z "
     private const val CLOSED_EYES = "M44.5,62.5 A2.75,2.75 0 0 0 50,62.5 A2.75,1.6 0 0 1 44.5,62.5 Z M58,62.5 A2.75,2.75 0 0 0 63.5,62.5 A2.75,1.6 0 0 1 58,62.5 Z "
-    private const val NOSE = "M50.5,69.5 H57.5 L54,73.5 Z"
+    private const val NOSE = "M50.5,68.5 H57.5 L54,72 Z M44,71 C48,76 60,76 64,70 C62,81 56,85 51,82 C47,80 45,75 44,71 Z "
 
     val leftEar = path("M44,26 A5,5 0 0 1 49,31 V54 A5,5 0 0 1 39,54 V31 A5,5 0 0 1 44,26 Z")
     val rightEar = path("M64,26 A5,5 0 0 1 69,31 V54 A5,5 0 0 1 59,54 V31 A5,5 0 0 1 64,26 Z")

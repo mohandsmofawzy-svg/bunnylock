@@ -10,53 +10,53 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// تثبيت الأسود للخلفية والنبيتي للأزرار يمنع تبدل الهوية مع ألوان النظام.
+// الخلفية سوداء، والنبيتي لون الهوية والإجراءات؛ تبقى ألوان الإشارة مستقلة لتوضيح جودتها.
 private val DarkColors =
     darkColorScheme(
-        primary = Color(0xFFB3435A),
-        onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFF76283A),
-        onPrimaryContainer = Color(0xFFFFD9DF),
-        secondary = Color(0xFFBFC8D0),
-        onSecondary = Color(0xFF283141),
-        secondaryContainer = Color(0xFF394148),
-        onSecondaryContainer = Color(0xFFE1E7EC),
-        tertiary = Color(0xFFD2697C),
-        onTertiary = Color(0xFF3B0714),
-        tertiaryContainer = Color(0xFF652033),
-        onTertiaryContainer = Color(0xFFFFD9DF),
-        error = Color(0xFFF44336),
-        onError = Color(0xFFFFFFFF),
-        errorContainer = Color(0xFF8C1D18),
+        primary = Color(0xFF8F1838),
+        onPrimary = Color(0xFFFFF1F4),
+        primaryContainer = Color(0xFF561025),
+        onPrimaryContainer = Color(0xFFFFD9E2),
+        secondary = Color(0xFFCA8798),
+        onSecondary = Color(0xFF35131D),
+        secondaryContainer = Color(0xFF51212F),
+        onSecondaryContainer = Color(0xFFFFD9E2),
+        tertiary = Color(0xFFE0B66D),
+        onTertiary = Color(0xFF302100),
+        tertiaryContainer = Color(0xFF4A3510),
+        onTertiaryContainer = Color(0xFFFFE2A8),
+        error = Color(0xFFFFB4AB),
+        onError = Color(0xFF690005),
+        errorContainer = Color(0xFF93000A),
         onErrorContainer = Color(0xFFFFDAD6),
         background = Color(0xFF000000),
-        onBackground = Color(0xFFE8E1E3),
+        onBackground = Color(0xFFF2E9EC),
         surface = Color(0xFF000000),
-        onSurface = Color(0xFFE8E1E3),
-        surfaceVariant = Color(0xFF40373A),
-        onSurfaceVariant = Color(0xFFD0C3C6),
-        outline = Color(0xFF988A8E),
-        outlineVariant = Color(0xFF51464A),
-        inverseSurface = Color(0xFFE8E1E3),
-        inverseOnSurface = Color(0xFF21191C),
-        inversePrimary = Color(0xFF8E3045),
+        onSurface = Color(0xFFF2E9EC),
+        surfaceVariant = Color(0xFF292126),
+        onSurfaceVariant = Color(0xFFC9BBC0),
+        outline = Color(0xFF88777D),
+        outlineVariant = Color(0xFF49373D),
+        inverseSurface = Color(0xFFF2E9EC),
+        inverseOnSurface = Color(0xFF24191D),
+        inversePrimary = Color(0xFF7B1733),
         surfaceContainerLowest = Color(0xFF000000),
-        surfaceContainerLow = Color(0xFF100D0E),
-        surfaceContainer = Color(0xFF171214),
-        surfaceContainerHigh = Color(0xFF211A1C),
-        surfaceContainerHighest = Color(0xFF2B2225),
+        surfaceContainerLow = Color(0xFF0A0709),
+        surfaceContainer = Color(0xFF120B0E),
+        surfaceContainerHigh = Color(0xFF1C1115),
+        surfaceContainerHighest = Color(0xFF28171D),
     )
 
-private val LockAccent = Color(0xFFB3435A)
-private val SignalScale = listOf(LockAccent, Color(0xFFD2697C), Color(0xFFFFB95C), Color(0xFFFF8A7E))
+private val LockGreen = Color(0xFF8F1838)
+private val SignalScale = listOf(Color(0xFF7BE5A0), Color(0xFFE0D879), Color(0xFFF0B86E), Color(0xFFFF8A7E))
 
-val LocalLockAccent = staticCompositionLocalOf { LockAccent }
+val LocalLockGreen = staticCompositionLocalOf { LockGreen }
 val LocalSignalScale = staticCompositionLocalOf { SignalScale }
 
 @Composable
 fun BunnyTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalLockAccent provides LockAccent,
+        LocalLockGreen provides LockGreen,
         LocalSignalScale provides SignalScale,
     ) {
         MaterialExpressiveTheme(

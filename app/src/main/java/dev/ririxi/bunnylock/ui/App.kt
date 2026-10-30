@@ -33,19 +33,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -75,6 +75,7 @@ import dev.ririxi.bunnylock.data.Release
 import dev.ririxi.bunnylock.modem.Access
 import dev.ririxi.bunnylock.modem.RootState
 import dev.ririxi.bunnylock.modem.SimInfo
+import java.net.URI
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -85,18 +86,18 @@ enum class Tab(
     val label: String,
     val icon: ImageVector,
 ) {
-    HOME("Home", Icons.Rounded.Home),
+    HOME("Main", Icons.Rounded.Home),
     BANDS("Bands", BunnyIcons.Bands),
     CELL("Cell lock", BunnyIcons.Tower),
-    TOOLS("Tools", Icons.Rounded.Build),
+    TOOLS("Menu", Icons.Rounded.Build),
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun BunnyApp(vm: MainViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(Tab.HOME) }
-    if (state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) LiveRefresh(vm)
+    if (!state.exiting && state.modem.root == RootState.Granted && (selectedTab == Tab.HOME || selectedTab == Tab.CELL)) LiveRefresh(vm)
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     LaunchedEffect(state.language) { vm.events.collect { snackbar.showSnackbar(translateUiText(it, state.language)) } }
@@ -109,21 +110,37 @@ fun BunnyApp(vm: MainViewModel) {
 
     Scaffold(
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Wordmark() },
-                subtitle = { Text(topBarSubtitle(state)) },
+            TopAppBar(
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        Wordmark(style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "${translateUiText(selectedTab.label, state.language)} · ${translateUiText(topBarSubtitle(state), state.language)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
                 actions = {
-                    if (state.modem.sims.size > 1) {
-                        SimChip(state.modem.sims, state.modem.sim, enabled = !state.busy && !state.modem.refreshing, onSelect = vm::setSim)
+                    if (state.modem.sims.size > 1 || state.modem.simSelectionRequired) {
+                        SimChip(
+                            state.modem.sims,
+                            state.modem.sim,
+                            enabled = !state.exiting && !state.busy && !state.modem.refreshing,
+                            confirmSelection = state.modem.simSelectionRequired,
+                            onSelect = vm::setSim,
+                        )
                     }
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                         when {
-                            state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
+                            state.exiting || state.busy || (state.modem.refreshing && !pulledToRefresh) || state.modem.root == RootState.Checking -> {
                                 LoadingIndicator(Modifier.size(36.dp))
                             }
 
                             state.modem.root == RootState.Granted -> {
-                                IconButton(onClick = vm::refresh) {
+                                IconButton(onClick = vm::refresh, enabled = !state.exiting && !state.modem.simSelectionRequired) {
                                     Icon(Icons.Rounded.Refresh, contentDescription = translateUiText("Refresh", state.language))
                                 }
                             }
@@ -140,14 +157,32 @@ fun BunnyApp(vm: MainViewModel) {
         },
         bottomBar = {
             if (state.modem.root == RootState.Granted) {
-                ShortNavigationBar {
-                    Tab.entries.forEach { tab ->
-                        ShortNavigationBarItem(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
-                            icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(tab.label) },
-                        )
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 4.dp,
+                ) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Tab.entries.forEach { tab ->
+                            val selected = selectedTab == tab
+                            Surface(
+                                onClick = { selectedTab = tab },
+                                modifier = Modifier.weight(1f).padding(5.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            ) {
+                                Column(
+                                    Modifier.padding(vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                                ) {
+                                    Icon(tab.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Text(tab.label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -196,18 +231,27 @@ fun BunnyApp(vm: MainViewModel) {
                         )
                     },
                 ) {
-                    // Inside the refresh box so the app bar expands before an overscroll becomes a refresh.
-                    AnimatedContent(
-                        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).belowBunnyRefresh(pullToRefreshState),
-                        targetState = selectedTab,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "tab",
-                    ) { tab ->
-                        when (tab) {
-                            Tab.HOME -> HomeScreen(state, vm, contentPadding) { selectedTab = it }
-                            Tab.BANDS -> BandsScreen(state, vm, contentPadding)
-                            Tab.CELL -> CellScreen(state, vm, contentPadding)
-                            Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
+                    Column(Modifier.fillMaxSize()) {
+                        if (state.modem.simSelectionRequired) {
+                            SimSelectionWarning(state, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                        }
+                        // Inside the refresh box so the app bar expands before an overscroll becomes a refresh.
+                        AnimatedContent(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                    .belowBunnyRefresh(pullToRefreshState),
+                            targetState = selectedTab,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "tab",
+                        ) { tab ->
+                            when (tab) {
+                                Tab.HOME -> HomeScreen(state, vm, contentPadding) { selectedTab = it }
+                                Tab.BANDS -> BandsScreen(state, vm, contentPadding)
+                                Tab.CELL -> CellScreen(state, vm, contentPadding)
+                                Tab.TOOLS -> ToolsScreen(state, vm, contentPadding)
+                            }
                         }
                     }
                 }
@@ -223,6 +267,8 @@ private fun UpdateDialog(
     onDismiss: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    val downloadUrlAvailable = isValidHttpUrl(release.url)
+    var linkError by remember(release.url) { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Update available") },
@@ -230,18 +276,27 @@ private fun UpdateDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Version ${release.version} is out.")
                 if (release.notes.isNotEmpty()) Text(release.notes, style = MaterialTheme.typography.bodyMedium)
+                linkError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Button(
-                    onClick = {
-                        runCatching { uriHandler.openUri(release.url) }
-                        onDismiss()
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Download") }
+                if (downloadUrlAvailable) {
+                    Button(
+                        onClick = {
+                            try {
+                                uriHandler.openUri(release.url)
+                                onDismiss()
+                            } catch (e: Exception) {
+                                linkError = e.message ?: "Couldn't open the update link."
+                            }
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Download") }
+                } else {
+                    Text("No valid update link is configured.", color = MaterialTheme.colorScheme.error)
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onSkip, shapes = ButtonDefaults.shapes()) { Text("Skip this version") }
                     TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Later") }
@@ -249,6 +304,28 @@ private fun UpdateDialog(
             }
         },
     )
+}
+
+private fun isValidHttpUrl(value: String): Boolean =
+    runCatching { URI(value) }
+        .getOrNull()
+        ?.let { it.isAbsolute && it.scheme in setOf("https", "http") && !it.host.isNullOrBlank() }
+        ?: false
+
+@Composable
+private fun SimSelectionWarning(
+    state: UiState,
+    modifier: Modifier = Modifier,
+) {
+    Panel(modifier, padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+        Text("SIM selection needs confirmation", style = MaterialTheme.typography.titleSmallEmphasized, color = MaterialTheme.colorScheme.tertiary)
+        state.modem.savedSimName?.let { Text("Previously selected SIM: $it", style = MaterialTheme.typography.bodyMediumEmphasized) }
+        Text(
+            "The active SIM mapping is not verified. Choose an active SIM from the selector; if none is listed, grant phone-state access. Modem controls stay disabled until the subscription ID and SIM slot can be matched.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -276,6 +353,7 @@ private fun SimChip(
     sims: List<SimInfo>,
     selected: Int,
     enabled: Boolean,
+    confirmSelection: Boolean,
     onSelect: (Int) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -305,7 +383,7 @@ private fun SimChip(
                     trailingIcon = { if (number == selected) Icon(Icons.Rounded.Check, contentDescription = translateUiText("Selected", LocalAppLanguage.current)) },
                     onClick = {
                         expanded = false
-                        if (number != selected) onSelect(number)
+                        if (number != selected || confirmSelection) onSelect(number)
                     },
                 )
             }

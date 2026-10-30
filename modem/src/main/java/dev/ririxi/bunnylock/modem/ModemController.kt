@@ -45,10 +45,12 @@ private data class BackendReadout(
     val lteLock: String? = null,
     val nrLock: String? = null,
     val legacyCellLock: String? = null,
+    val cellLockStatus: LockStatus = LockStatus.UNKNOWN,
     val mtkCellLockRefused: Boolean = false,
+    /** The modem answered about operator selection, so the framework's stored value must not override it. */
     val plmnLock: String? = null,
-    /** The modem answered about network selection, so the framework's stored value must not override it. */
-    val plmnReported: Boolean = false,
+    val networkSelectionReported: Boolean = false,
+    val networkSelectionMode: NetworkSelectionMode = NetworkSelectionMode.UNKNOWN,
     val cells: List<Cell> = emptyList(),
     val carriers: List<Carrier> = emptyList(),
     val allowedMask: Long? = null,
@@ -85,7 +87,6 @@ private val GERAN_RESTORE_BANDS = GERAN_BANDS.values.flatten()
 private val HAL_WCDMA_BANDS = Bands.WCDMA.filter { it !in 15..18 }
 private val UTRAN_RESTORE_BANDS = listOf(1, 2, 3, 4, 5, 8, 9, 19)
 private const val MAX_LOG_LINES = 80
-private val MODEM_OPERATION_MUTEX = Mutex()
 
 /** QMI's network selection preference. 0 is automatic. */
 private const val QMI_NET_SEL_MANUAL = 1
@@ -148,7 +149,6 @@ class ModemController(
     private val starter: HelperStarter,
     private val onConnected: () -> Unit = {},
     private val onRefreshed: (ModemState) -> Unit = {},
-    private val forceMtkRilForSelectedSim: Boolean = false,
 ) {
     private val context: Context = context.applicationContext
     private var helper: PrivilegedClient = RootClient(this.context)
@@ -161,8 +161,9 @@ class ModemController(
         MutableStateFlow(
             ModemState(
                 persist = prefs.getBoolean("persist", true),
-                sim = prefs.getInt("sim", 1),
                 atNode = prefs.getString("atNode", "") ?: "",
+                simSelectionRequired = prefs.contains(PREF_SELECTED_SUB_ID),
+                savedSimName = prefs.getString(PREF_SELECTED_SIM_NAME, null),
             ),
         )
     val state = _state.asStateFlow()
@@ -186,19 +187,30 @@ class ModemController(
 
     private var connecting: Job? = null
     // يمنع تداخل تغيير الإعدادات مع تحديث الحالة؛ بعض أوامر المودم تغيّر الراديو على مراحل.
-    private val operationMutex = MODEM_OPERATION_MUTEX
+    private val operationMutex = Mutex()
     @Volatile private var closed = false
+    private var subscriptionListenerRegistered = false
+    private val subscriptionListener =
+        object : SubscriptionManager.OnSubscriptionsChangedListener() {
+            override fun onSubscriptionsChanged() {
+                if (!closed) loadSims()
+            }
+        }
 
     fun close() {
-        closed = true
-        connecting?.cancel()
+        preventNewOperations()
         helper.stop()
+    }
+
+    fun preventNewOperations() {
+        closed = true
+        unregisterSubscriptionListener()
+        connecting?.cancel()
     }
 
     /** ينتظر انتهاء العملية الحالية، ثم يمنع أي أمر جديد ويغلق المساعد بأمان. */
     suspend fun shutdown() {
-        closed = true
-        connecting?.cancel()
+        preventNewOperations()
         connecting?.join()
         operationMutex.withLock { helper.stop() }
     }
@@ -243,17 +255,12 @@ class ModemController(
             val savedBackendName = prefs.getString("backend", null)
             val savedBackend = Backend.entries.firstOrNull { it.name == savedBackendName }
             val backend = savedBackend?.takeIf(::allowed) ?: suggestedBackend
-            val useSimScopedMtkRil = forceMtkRilForSelectedSim && backend == Backend.MEDIATEK
-            check(!useSimScopedMtkRil || device.mtkOemHookSlotScoped) {
-                "MediaTek's SIM-specific RIL route isn't available, so the data SIM can't be verified against an AT port."
-            }
             updateState {
                 copy(root = RootState.Granted, access = access, device = device, autoBackend = suggestedBackend, backend = backend)
             }
             val node =
                 when {
-                    useSimScopedMtkRil -> rilNode(current.sim)
-                    shellOnly && device.mtkOemHook -> rilNode(sim = current.sim)
+                    shellOnly && device.mtkOemHook -> rilNode(sim = 1)
                     current.atNode.isNotEmpty() -> current.atNode
                     device.pixelRouter -> PIXEL_AT_NODE
                     else -> device.atNodes.firstOrNull { it.startsWith("/dev/radio") } ?: device.atNodes.firstOrNull() ?: ""
@@ -285,54 +292,100 @@ class ModemController(
     @SuppressLint("MissingPermission")
     fun loadSims() {
         val sims = ArrayList<SimInfo>()
-        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-            runCatching {
-                context.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList?.forEach { subscription ->
+        val canReadSubscriptions = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        var subscriptionListRead = false
+        if (canReadSubscriptions) {
+            try {
+                val subscriptions = context.getSystemService(SubscriptionManager::class.java)
+                subscriptions.activeSubscriptionInfoList?.forEach { subscription ->
                     val name = subscription.displayName?.toString() ?: "SIM ${subscription.simSlotIndex + 1}"
                     sims += SimInfo(subscription.simSlotIndex, subscription.subscriptionId, name)
                 }
+                if (!subscriptionListenerRegistered) {
+                    subscriptions.addOnSubscriptionsChangedListener(context.mainExecutor, subscriptionListener)
+                    subscriptionListenerRegistered = true
+                }
+                subscriptionListRead = true
+            } catch (e: Exception) {
+                log("Couldn't verify the active SIM subscriptions. ${e.message ?: e.javaClass.simpleName}")
             }
         }
-        if (sims.isEmpty()) sims += SimInfo(0, SubscriptionManager.getDefaultSubscriptionId(), "SIM 1")
         sims.sortBy { it.slot }
+        val uniqueSlots = sims.groupingBy { it.slot }.eachCount().filterValues { it == 1 }.keys
+        val uniqueSubIds = sims.groupingBy { it.subId }.eachCount().filterValues { it == 1 }.keys
+        val savedSubId = prefs.getInt(PREF_SELECTED_SUB_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+        val savedSlot = prefs.getInt(PREF_SELECTED_SIM_SLOT, INVALID_SIM_SLOT)
+        val validSubscriptions =
+            sims.filter {
+                it.subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID &&
+                    it.slot >= 0 &&
+                    it.slot in uniqueSlots &&
+                    it.subId in uniqueSubIds
+            }
+        val restored =
+            validSubscriptions.firstOrNull {
+                it.subId == savedSubId && it.slot == savedSlot
+            }
+        val selectionRequired =
+            !subscriptionListRead ||
+                validSubscriptions.isEmpty() ||
+                (savedSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID && restored == null)
+        if (sims.isEmpty()) sims += SimInfo(0, SubscriptionManager.INVALID_SUBSCRIPTION_ID, "SIM 1")
         updateState {
-            val selectedSimPresent = sims.any { it.slot == sim - 1 }
-            copy(sims = sims, sim = if (selectedSimPresent) sim else sims.first().slot + 1)
+            val selectedSlot =
+                restored?.slot
+                    ?: sims.firstOrNull { it.slot == sim - 1 && it in validSubscriptions }?.slot
+                    ?: validSubscriptions.firstOrNull()?.slot
+                    ?: sims.first().slot
+            copy(
+                sims = sims,
+                sim = selectedSlot + 1,
+                simSelectionRequired = selectionRequired,
+                savedSimName = prefs.getString(PREF_SELECTED_SIM_NAME, null),
+            )
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    fun selectDefaultDataSim(): Boolean {
-        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return false
-        val defaultDataSubId = SubscriptionManager.getDefaultDataSubscriptionId()
-        if (defaultDataSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) return false
-        val activeSubscriptions =
-            runCatching { context.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList.orEmpty() }
-                .getOrNull() ?: return false
-        val dataSubscription = activeSubscriptions.singleOrNull { it.subscriptionId == defaultDataSubId } ?: return false
-        if (dataSubscription.simSlotIndex < 0) return false
-        val sims = activeSubscriptions.map { SimInfo(it.simSlotIndex, it.subscriptionId, it.displayName?.toString() ?: "SIM ${it.simSlotIndex + 1}") }
-        val sim = dataSubscription.simSlotIndex + 1
-        updateState { copy(sims = sims, sim = sim) }
-        return true
     }
 
     private fun subId(): Int =
-        current.sims.firstOrNull { it.slot == current.sim - 1 }?.subId ?: SubscriptionManager.getDefaultSubscriptionId()
+        current.sims.firstOrNull { it.slot == current.sim - 1 }?.subId ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
 
     fun setSim(sim: Int) {
         if (closed) return
-        prefs.edit().putInt("sim", sim).apply()
+        val matchingSlots = current.sims.filter { it.slot == sim - 1 }
+        val selected = matchingSlots.singleOrNull()
+        if (selected == null ||
+            selected.subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID ||
+            selected.slot < 0
+        ) {
+            updateState { copy(simSelectionRequired = true) }
+            return
+        }
+        prefs.edit()
+            .putInt(PREF_SELECTED_SUB_ID, selected.subId)
+            .putInt(PREF_SELECTED_SIM_SLOT, selected.slot)
+            .putString(PREF_SELECTED_SIM_NAME, selected.name)
+            .apply()
         val atNode = if (current.atNode.startsWith(RIL_NODE_PREFIX)) rilNode(sim) else current.atNode
-        updateState { copy(sim = sim, atNode = atNode) }
+        updateState { copy(sim = sim, atNode = atNode, simSelectionRequired = false, savedSimName = selected.name) }
         refresh()
     }
 
     fun setBackend(backend: Backend) {
-        if (closed || !current.allows(backend)) return
+        if (closed || current.simSelectionRequired || !current.allows(backend)) return
         prefs.edit().putString("backend", backend.name).apply()
         updateState {
-            copy(backend = backend, groups = emptyList(), lteLock = null, nrLock = null, legacyCellLock = null, strayChannel = null)
+            copy(
+                backend = backend,
+                readbackValid = false,
+                groups = emptyList(),
+                lteLock = null,
+                nrLock = null,
+                cellLockStatus = LockStatus.UNKNOWN,
+                plmnLock = null,
+                networkSelectionMode = NetworkSelectionMode.UNKNOWN,
+                legacyCellLock = null,
+                strayChannel = null,
+            )
         }
         refresh()
     }
@@ -360,6 +413,7 @@ class ModemController(
         block: suspend () -> String?,
     ): String = operationMutex.withLock {
         check(!closed) { "The modem controller is closed." }
+        check(!current.simSelectionRequired) { "Select an active SIM again before using modem controls." }
         attempt(goal) { block() ?: successMessage }.also(::log)
     }
 
@@ -776,11 +830,22 @@ class ModemController(
         }
 
     suspend fun refreshNow() = operationMutex.withLock {
-        if (closed || !helper.running) return@withLock
-        updateState { copy(refreshing = true) }
+        if (closed || !helper.running || current.simSelectionRequired) {
+            updateState { copy(readbackValid = false) }
+            return@withLock
+        }
+        updateState {
+            copy(
+                refreshing = true,
+                readbackValid = false,
+                cellLockStatus = LockStatus.UNKNOWN,
+                networkSelectionMode = NetworkSelectionMode.UNKNOWN,
+            )
+        }
         try {
             // Subscription ids change when a SIM is swapped or switched off and on.
             loadSims()
+            if (current.simSelectionRequired) return@withLock
             val sim = current.sim
             val subscriptionId = subId()
             val aospState = runSuspendCatching { helper.call("aosp.state") { put("subId", subscriptionId) } }.getOrNull()
@@ -791,7 +856,9 @@ class ModemController(
                     Backend.PIXEL -> loadPixel(sim, aospState)
                     Backend.ANDROID, null -> loadHal(sim, aospState)
                 }
-            val plmnLock = if (modem.plmnReported) modem.plmnLock else halPlmnLock(aospState)
+            val plmnLock = if (modem.networkSelectionReported) modem.plmnLock else halPlmnLock(aospState)
+            val networkSelectionMode =
+                if (modem.networkSelectionReported) modem.networkSelectionMode else aospNetworkSelectionMode(aospState)
             val telephony =
                 context
                     .getSystemService(TelephonyManager::class.java)
@@ -822,7 +889,9 @@ class ModemController(
                     lteLock = modem.lteLock,
                     nrLock = modem.nrLock,
                     legacyCellLock = modem.legacyCellLock,
+                    cellLockStatus = modem.cellLockStatus,
                     plmnLock = plmnLock,
+                    networkSelectionMode = networkSelectionMode,
                     registeredPlmn = identity.registeredPlmn,
                     registeredName = identity.registeredName,
                     homePlmn = identity.homePlmn,
@@ -836,12 +905,20 @@ class ModemController(
                     netModeHeldBack = aospState?.optString("modeHeldBack")?.takeIf { it.isNotEmpty() },
                     netModeMasks = aospState?.optString("modeMasks")?.takeIf { it.isNotEmpty() },
                     nrDc = aospState?.takeIf { it.has("nrDc") }?.optBoolean("nrDc"),
+                    readbackValid = true,
                 )
             }
             onRefreshed(current)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            updateState {
+                copy(
+                    readbackValid = false,
+                    cellLockStatus = LockStatus.UNKNOWN,
+                    networkSelectionMode = NetworkSelectionMode.UNKNOWN,
+                )
+            }
             report("Couldn't refresh. ${reason(e)}")
         } finally {
             updateState { copy(refreshing = false) }
@@ -870,7 +947,7 @@ class ModemController(
     suspend fun refreshConnection(skipCellScan: Boolean = false) {
         if (closed || !operationMutex.tryLock()) return
         try {
-            if (!helper.running || current.refreshing || current.root != RootState.Granted) return
+            if (!helper.running || current.refreshing || current.root != RootState.Granted || current.simSelectionRequired) return
             val sim = current.sim
             val subscriptionId = subId()
             if (!skipCellScan && current.backend == Backend.QUALCOMM) {
@@ -992,7 +1069,15 @@ class ModemController(
             lteLock = qcLteLock(qcState.optJSONObject("lteLock"), sim),
             nrLock = qcState.optJSONObject("nrLock")?.takeIf { it.optBoolean("active") }?.let(::qcNrLockLabel),
             plmnLock = manualSelection?.let { qcPlmnLabel(it, qcState.optJSONObject("manualPlmn"), sim) },
-            plmnReported = qcState.has("netSel"),
+            networkSelectionReported =
+                qcNetworkSelectionMode(qcState.optJSONObject("netSel")) != NetworkSelectionMode.UNKNOWN,
+            cellLockStatus = when {
+                qcState.optJSONObject("lteLock")?.optBoolean("active") == true ||
+                    qcState.optJSONObject("nrLock")?.optBoolean("active") == true -> LockStatus.ACTIVE
+                qcState.has("lteLock") && qcState.has("nrLock") -> LockStatus.CLEAR
+                else -> LockStatus.UNKNOWN
+            },
+            networkSelectionMode = qcNetworkSelectionMode(qcState.optJSONObject("netSel")),
             cells = serving?.let { runCatching { Cells.fromQualcomm(it) }.getOrNull() }.orEmpty(),
             carriers = Carriers.fromReport(serving?.optJSONArray("carriers")),
         )
@@ -1004,6 +1089,14 @@ class ModemController(
             1 -> NrMode.NSA
             2 -> NrMode.SA
             else -> null
+        }
+
+    private fun qcNetworkSelectionMode(netSel: JSONObject?): NetworkSelectionMode =
+        when {
+            netSel == null || !netSel.has("mode") -> NetworkSelectionMode.UNKNOWN
+            netSel.optInt("mode", -1) == 0 -> NetworkSelectionMode.AUTOMATIC
+            netSel.optInt("mode", -1) == QMI_NET_SEL_MANUAL -> NetworkSelectionMode.MANUAL
+            else -> NetworkSelectionMode.UNKNOWN
         }
 
     private fun qcLteLock(
@@ -1102,6 +1195,7 @@ class ModemController(
                 lteLock = channelLock(specs, Ran.EUTRAN),
                 nrLock = channelLock(specs, Ran.NGRAN),
                 mtkCellLockRefused = true,
+                cellLockStatus = halCellLockStatus(aospState),
                 allowedMask = allowedMask,
             )
         }
@@ -1116,6 +1210,13 @@ class ModemController(
             lteLock = lockLabel.takeIf { !nrLocked && !legacyLocked },
             nrLock = lockLabel.takeIf { nrLocked },
             legacyCellLock = lockLabel.takeIf { legacyLocked },
+            cellLockStatus =
+                when {
+                    cellLockState == null -> LockStatus.UNKNOWN
+                    cellLock != null -> LockStatus.ACTIVE
+                    else -> LockStatus.CLEAR
+                },
+            networkSelectionMode = aospNetworkSelectionMode(aospState),
             allowedMask = allowedMask,
         )
     }
@@ -1149,6 +1250,8 @@ class ModemController(
             nrMode = pixelNrMode(pixelState.optString("nrMode")),
             lteLock = channelLock(specs, Ran.EUTRAN),
             nrLock = channelLock(specs, Ran.NGRAN),
+            cellLockStatus = halCellLockStatus(aospState),
+            networkSelectionMode = aospNetworkSelectionMode(aospState),
         )
     }
 
@@ -1177,8 +1280,50 @@ class ModemController(
             groups = groups,
             lteLock = channelLock(specs, Ran.EUTRAN),
             nrLock = channelLock(specs, Ran.NGRAN),
+            cellLockStatus = halCellLockStatus(aospState),
+            networkSelectionMode = aospNetworkSelectionMode(aospState),
         )
     }
+
+    private fun halCellLockStatus(
+        aospState: JSONObject?,
+        sim: Int = current.sim,
+    ): LockStatus {
+        val radioState = aospState ?: return LockStatus.UNKNOWN
+        if (!radioState.has("channels") || radioState.has("channelsError")) return LockStatus.UNKNOWN
+        val reported =
+            radioState.optJSONArray("channels")
+                ?.objects()
+                .orEmpty()
+                .filter { !it.intList("channels").isNullOrEmpty() }
+        val saved = channelSpecs(aospState, sim)
+        val savedCells = saved.filter { it.isCellLock }
+        val matchedSavedCell =
+            savedCells.any { savedCell ->
+                val expected = savedCell.intList("channels").orEmpty().toSet()
+                reported.any { actual ->
+                    actual.optInt("ran") == savedCell.optInt("ran") &&
+                        actual.intList("channels").orEmpty().any { it in expected }
+                }
+            }
+        if (matchedSavedCell) return LockStatus.ACTIVE
+        if (reported.isEmpty()) return LockStatus.CLEAR
+        val unclassified =
+            reported.any { actual ->
+                saved.none { savedSpec ->
+                    savedSpec.optInt("ran") == actual.optInt("ran") &&
+                        savedSpec.intList("channels").orEmpty().any { it in actual.intList("channels").orEmpty() }
+                }
+            }
+        return if (unclassified) LockStatus.UNKNOWN else LockStatus.CLEAR
+    }
+
+    private fun aospNetworkSelectionMode(aospState: JSONObject?): NetworkSelectionMode =
+        when (aospState?.takeIf { it.has("selectionMode") }?.optInt("selectionMode", -1)) {
+            0 -> NetworkSelectionMode.AUTOMATIC
+            TelephonyManager.NETWORK_SELECTION_MODE_MANUAL -> NetworkSelectionMode.MANUAL
+            else -> NetworkSelectionMode.UNKNOWN
+        }
 
     /**
      * What bunnylock last set is what counts as a lock. The list the radio HAL reports can't tell one apart:
@@ -1189,9 +1334,23 @@ class ModemController(
         aospState: JSONObject?,
         sim: Int,
     ): List<JSONObject> {
-        val saved = prefs.getString(halSpecsKey(sim), null)
-        if (saved !== null) return runCatching { JSONArray(saved).objects() }.getOrDefault(emptyList())
-        return aospState?.optJSONArray("channels")?.objects()?.filter { !it.intList("channels").isNullOrEmpty() } ?: emptyList()
+        val radioState = aospState
+        val savedText = prefs.getString(halSpecsKey(sim), null)
+        if (savedText !== null) {
+            val saved = runCatching { JSONArray(savedText).objects() }.getOrDefault(emptyList())
+            if (radioState != null && radioState.has("channels") && !radioState.has("channelsError")) {
+                val reportedCells =
+                    radioState.optJSONArray("channels")?.objects().orEmpty()
+                    .filter { !it.intList("channels").isNullOrEmpty() }
+                if (reportedCells.isEmpty() && saved.any { it.isCellLock }) {
+                    val remaining = saved.filterNot { it.isCellLock }
+                    prefs.edit().putString(halSpecsKey(sim), JSONArray(remaining).toString()).apply()
+                    return remaining
+                }
+            }
+            return saved
+        }
+        return radioState?.optJSONArray("channels")?.objects()?.filter { !it.intList("channels").isNullOrEmpty() } ?: emptyList()
     }
 
     /** The locks bunnylock itself holds on the current SIM, never what the radio HAL reports. */
@@ -1254,15 +1413,16 @@ class ModemController(
     }
 
     private fun halPlmnLock(aospState: JSONObject?): String? {
-        if (aospState?.optInt("selectionMode") != TelephonyManager.NETWORK_SELECTION_MODE_MANUAL) return null
-        val manualPlmn = aospState.optString("manualPlmn")
+        if (aospNetworkSelectionMode(aospState) != NetworkSelectionMode.MANUAL) return null
+        val manualPlmn = aospState?.optString("manualPlmn").orEmpty()
         return if (manualPlmn.isEmpty()) "Manual selection" else formatPlmn(manualPlmn)
     }
 
     suspend fun lockBands(
         group: Group,
         bands: Collection<Int>,
-    ): String = applyGroup(group, unlock = false, selected = bands)
+        persistOverride: Boolean? = null,
+    ): String = applyGroup(group, unlock = false, selected = bands, persistOverride = persistOverride)
 
     suspend fun unlockBands(group: Group): String = applyGroup(group, unlock = true)
 
@@ -1270,28 +1430,11 @@ class ModemController(
         group: Group,
         unlock: Boolean,
         selected: Collection<Int> = emptyList(),
+        persistOverride: Boolean? = null,
     ) = change(
         if (unlock) "unlock the ${group.label} bands" else "lock the ${group.label} bands",
         if (unlock) "${group.label} bands unlocked." else "${group.label} bands locked.",
-    ) { applyGroupLocked(group, unlock, selected) }
-
-    suspend fun reapplyBandLocks(): String =
-        change("reapply the saved band locks", "Locked.") {
-            check(current.backend != Backend.PIXEL) { "Reapplying Pixel band locks requires a radio restart, so no change was made." }
-            val lockedGroups = current.groups.filter { it.locked && it.current !== null }
-            check(lockedGroups.isNotEmpty()) { "There are no saved band locks to reapply." }
-            lockedGroups.forEach { groupState ->
-                val result = applyGroupLocked(groupState.group, unlock = false, selected = groupState.current.orEmpty())
-                check(result?.startsWith("Android accepted the ") != true) { result.orEmpty() }
-            }
-            "Locked."
-        }
-
-    private suspend fun applyGroupLocked(
-        group: Group,
-        unlock: Boolean,
-        selected: Collection<Int> = emptyList(),
-    ): String? {
+    ) {
         val groupState = current.groups.first { it.group == group }
         val bands = if (unlock) groupState.supported else selected.distinct().sorted()
         require(bands.isNotEmpty()) { "Pick at least one band." }
@@ -1315,7 +1458,7 @@ class ModemController(
                         put("sim", current.sim)
                         put("kind", kind)
                         put("bands", bandsJson)
-                        put("persist", current.persist)
+                        put("persist", persistOverride ?: current.persist)
                     }
                 result.optJSONArray("notes")?.takeIf { it.length() > 0 }?.getString(0)
             }
@@ -1966,6 +2109,7 @@ class ModemController(
     suspend fun sendAt(command: String): String =
         operationMutex.withLock {
             check(!closed) { "The modem controller is closed." }
+            check(!current.simSelectionRequired) { "Select an active SIM again before using modem controls." }
             attempt("send the AT command") {
                 val response =
                     helper.call("at", 15.seconds) {
@@ -1984,6 +2128,7 @@ class ModemController(
     ): JSONObject =
         operationMutex.withLock {
             check(!closed) { "The modem controller is closed." }
+            check(!current.simSelectionRequired) { "Select an active SIM again before using modem controls." }
             attempt("send QMI message 0x%04X".format(msg)) {
                 helper.call("qc.raw") {
                     put("sim", current.sim)
@@ -2033,6 +2178,25 @@ class ModemController(
             appendLine()
             appendLine("Log:")
             current.log.forEach { appendLine(it) }
+        }
+    }
+
+    private companion object {
+        const val PREF_SELECTED_SUB_ID = "selectedSubscriptionId"
+        const val PREF_SELECTED_SIM_SLOT = "selectedSimSlot"
+        const val PREF_SELECTED_SIM_NAME = "selectedSimName"
+        const val INVALID_SIM_SLOT = -1
+    }
+
+    private fun unregisterSubscriptionListener() {
+        if (!subscriptionListenerRegistered) return
+        try {
+            context.getSystemService(SubscriptionManager::class.java)
+                .removeOnSubscriptionsChangedListener(subscriptionListener)
+        } catch (e: Exception) {
+            log("Couldn't unregister the SIM subscription listener. ${e.message ?: e.javaClass.simpleName}")
+        } finally {
+            subscriptionListenerRegistered = false
         }
     }
 }

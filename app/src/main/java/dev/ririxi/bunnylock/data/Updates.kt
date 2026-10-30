@@ -14,7 +14,8 @@ data class Release(
 )
 
 object Updates {
-    private const val LATEST_RELEASE = "https://api.github.com/repos/btsearch/bunnylock/releases/latest"
+    // Set a valid GitHub releases API endpoint here to re-enable update discovery.
+    private const val LATEST_RELEASE_API_URL = ""
     private const val TIMEOUT_MS = 10_000
 
     private val COMMIT_LINK = Regex("""\s*\(\[[0-9a-f]{7,40}\]\([^)]*\)\)""")
@@ -22,18 +23,28 @@ object Updates {
 
     suspend fun newerThan(installed: String): Release? =
         withContext(Dispatchers.IO) {
-            val latest = JSONObject(fetch(LATEST_RELEASE))
+            if (!isValidHttpUrl(LATEST_RELEASE_API_URL)) return@withContext null
+            val latest = JSONObject(fetch(LATEST_RELEASE_API_URL))
             val version = latest.getString("tag_name").removePrefix("v")
             if (!isNewer(version, installed)) return@withContext null
             val assets = latest.optJSONArray("assets") ?: JSONArray()
             val apk = List(assets.length()) { assets.getJSONObject(it) }.firstOrNull { it.optString("name").endsWith(".apk") }
             val notes = if (latest.isNull("body")) "" else latest.getString("body")
+            val url = apk?.optString("browser_download_url")?.takeIf(::isValidHttpUrl)
+                ?: latest.optString("html_url").takeIf(::isValidHttpUrl)
+                ?: return@withContext null
             Release(
                 version = version,
                 notes = notes.replace(COMMIT_LINK, "").replace(HEADING_MARK, "").trim(),
-                url = apk?.getString("browser_download_url") ?: latest.getString("html_url"),
+                url = url,
             )
         }
+
+    private fun isValidHttpUrl(value: String): Boolean =
+        runCatching { java.net.URI(value) }
+            .getOrNull()
+            ?.let { it.isAbsolute && it.scheme in setOf("https", "http") && !it.host.isNullOrBlank() }
+            ?: false
 
     private fun fetch(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection

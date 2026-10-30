@@ -35,6 +35,7 @@ data class CellForm(
 data class UiState(
     val modem: ModemState = ModemState(),
     val busy: Boolean = false,
+    val exiting: Boolean = false,
     val bandSelections: Map<Group, Set<Int>> = emptyMap(),
     val form: CellForm = CellForm(),
     val plmnMcc: String = "",
@@ -45,6 +46,14 @@ data class UiState(
     val update: Release? = null,
     val favoriteBands: Map<String, Set<Int>> = emptyMap(),
     val watchdog: WatchdogState = WatchdogState(),
+    val dynamicBandEnabled: Boolean = false,
+    val dynamicBandReadOnly: Boolean = false,
+    val dynamicBandIntervalSeconds: Int = 30,
+    val dynamicBandCurrent: String? = null,
+    val dynamicBandNext: String? = null,
+    val dynamicBandSecondsRemaining: Int = 0,
+    val dynamicBandLastResult: String? = null,
+    val dynamicBandError: String? = null,
 ) {
     fun favoritesOf(group: Group): Set<Int> = favoriteBands[group.favoritesKey].orEmpty()
 

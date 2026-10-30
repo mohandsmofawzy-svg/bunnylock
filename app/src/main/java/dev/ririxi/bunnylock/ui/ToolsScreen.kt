@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +58,12 @@ import dev.ririxi.bunnylock.modem.DeviceInfo
 import dev.ririxi.bunnylock.modem.andList
 
 private val AT_COMMAND_PRESETS = listOf("ATI", "AT+EPBSE?", "AT+EPBSEH?", "AT+EMMCHLCK?", "AT+GOOGGETNV=\"NR.CONFIG.MODE\"")
+private val CFUN_MODES =
+    listOf(
+        Triple("AT+CFUN=1", "Full functionality", "Enables full modem functionality; the radio may register or reconnect."),
+        Triple("AT+CFUN=2", "RF transmit disabled", "Disables RF transmission on common implementations; service or data may be interrupted."),
+        Triple("AT+CFUN=3", "RF transmit and receive disabled", "Disables RF transmit and receive on common implementations; cellular service may be lost."),
+    )
 
 @Composable
 fun ToolsScreen(
@@ -68,12 +77,91 @@ fun ToolsScreen(
     var qmiMessage by rememberSaveable { mutableStateOf("004D") }
     var qmiPayload by rememberSaveable { mutableStateOf("") }
     var checkedServicesOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingCfunCommand by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val arrowAngle by animateFloatAsState(if (checkedServicesOpen) 180f else 0f, label = "arrow")
+    fun sendAtFromConsole() {
+        val command = atCommand.trim()
+        val containsCfunSetting = Regex("(?i)(?:^|[;\\r\\n])\\s*AT\\+CFUN\\s*=").containsMatchIn(command)
+        if (containsCfunSetting) {
+            pendingCfunCommand = command
+        } else if (command.isNotEmpty()) {
+            vm.sendAt(command)
+        }
+    }
 
     LazyColumn(contentPadding = contentPadding.withScreenMargins(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            SectionHeader("Backend")
+            SectionHeader("Control room")
+            val selectedSim = state.modem.sims.firstOrNull { it.slot + 1 == state.modem.sim }
+            Panel(padding = PaddingValues(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(state.modem.backend?.label ?: "Modem backend", style = MaterialTheme.typography.headlineSmallEmphasized)
+                        Text(
+                            if (state.modem.simSelectionRequired) "SIM confirmation required" else "Control path ready",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (state.modem.simSelectionRequired) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(BunnyIcons.Bands, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MenuFact("SIM", selectedSim?.name ?: "Not selected", Modifier.weight(1f))
+                    MenuFact("Chipset", state.modem.device?.vendorLabel ?: "Detecting", Modifier.weight(1f))
+                    MenuFact("Access", state.modem.access?.label ?: "Unavailable", Modifier.weight(1f))
+                }
+            }
+        }
+
+        item {
+            SectionHeader("Radio maintenance")
+            Panel {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RadioAction(
+                        "Restart radio",
+                        "Temporarily toggles airplane mode.",
+                        Icons.Rounded.Refresh,
+                        !state.busy && !state.dynamicBandEnabled && !state.modem.simSelectionRequired,
+                        vm::radioCycle,
+                        Modifier.weight(1f),
+                    )
+                    if (state.modem.backend == Backend.QUALCOMM) {
+                        RadioAction(
+                            "Re-attach",
+                            "Reconnects data using QMI.",
+                            Icons.Rounded.Refresh,
+                            !state.busy && !state.dynamicBandEnabled && !state.modem.simSelectionRequired,
+                            vm::reattach,
+                            Modifier.weight(1f),
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RadioAction(
+                        "Reboot modem",
+                        "Restarts the selected SIM.",
+                        Icons.Rounded.Warning,
+                        !state.busy && !state.dynamicBandEnabled && !state.modem.simSelectionRequired,
+                        vm::rebootModem,
+                        Modifier.weight(1f),
+                    )
+                    if (state.modem.device?.samsungMenu == true) {
+                        RadioAction(
+                            "Samsung bands",
+                            "Opens the OEM band menu.",
+                            Icons.Rounded.Settings,
+                            !state.dynamicBandEnabled && !state.modem.simSelectionRequired,
+                            vm::samsungMenu,
+                            Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            SectionHeader("Control method")
             Segmented {
                 Backend.entries.forEach { backend ->
                     val selected = state.modem.backend == backend
@@ -88,7 +176,7 @@ fun ToolsScreen(
                         SegmentedListItem(
                             selected = selected,
                             onClick = { vm.setBackend(backend) },
-                            enabled = !needsRoot && !state.busy && !state.modem.refreshing,
+                            enabled = !needsRoot && !state.busy && !state.dynamicBandEnabled && !state.modem.refreshing && !state.modem.simSelectionRequired,
                             shapes = shapes,
                             colors = segmentColors(),
                             supportingContent = if (hint !== null) ({ Text(hint) }) else null,
@@ -103,7 +191,7 @@ fun ToolsScreen(
                             "Keep band locks after reboot",
                             "When this is off, locks are cleared on reboot.",
                             checked = state.modem.persist,
-                            enabled = !state.busy && !state.modem.refreshing,
+                            enabled = !state.busy && !state.dynamicBandEnabled && !state.modem.refreshing,
                             onCheckedChange = vm::setPersist,
                         )
                     }
@@ -112,7 +200,7 @@ fun ToolsScreen(
         }
 
         item {
-            SectionHeader("Language")
+            SectionHeader("Language and display")
             ConnectedChoice(
                 options = listOf("en", "ar"),
                 selected = state.language,
@@ -131,7 +219,7 @@ fun ToolsScreen(
                     SwitchItem(
                         it,
                         "Check for updates",
-                        "Looks for a new release on GitHub when the app starts.",
+                        "Checks for a release on launch when a releases API URL is configured.",
                         checked = state.checkUpdates,
                         onCheckedChange = vm::setCheckUpdates,
                     )
@@ -140,64 +228,15 @@ fun ToolsScreen(
         }
 
         item {
-            SectionHeader("Radio")
-            Segmented {
-                item {
-                    ActionItem(
-                        it,
-                        "Restart radio",
-                        "Turns airplane mode on and off again.",
-                        Icons.Rounded.Refresh,
-                        enabled = !state.busy,
-                        onClick = vm::radioCycle,
-                    )
-                }
-                if (state.modem.backend == Backend.QUALCOMM) {
-                    item {
-                        ActionItem(
-                            it,
-                            "Re-attach",
-                            "Drops the data connection and attaches again over QMI.",
-                            Icons.Rounded.Refresh,
-                            enabled = !state.busy,
-                            onClick = vm::reattach,
-                        )
-                    }
-                }
-                item {
-                    ActionItem(
-                        it,
-                        "Reboot modem",
-                        "This restarts the SIM too.",
-                        Icons.Rounded.Warning,
-                        enabled = !state.busy,
-                        onClick = vm::rebootModem,
-                    )
-                }
-                if (state.modem.device?.samsungMenu == true) {
-                    item {
-                        ActionItem(
-                            it,
-                            "Samsung band menu",
-                            "Opens Samsung's hidden band settings.",
-                            Icons.Rounded.Settings,
-                            enabled = true,
-                            onClick = vm::samsungMenu,
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            SectionHeader("AT console")
+            SectionHeader("Engineering console · AT")
             Panel {
                 OutlinedTextField(
                     state.modem.atNode,
                     vm::setAtNode,
                     label = { Text("AT port") },
                     singleLine = true,
-                    enabled = !state.busy && !state.modem.refreshing,
+                    textStyle = ltrInputTextStyle(),
+                    enabled = !state.busy && !state.dynamicBandEnabled && !state.modem.refreshing && !state.modem.simSelectionRequired,
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = { Text(atNodesHint(state.modem.device)) },
                 )
@@ -206,11 +245,12 @@ fun ToolsScreen(
                     { atCommand = it },
                     label = { Text("Command") },
                     singleLine = true,
+                    textStyle = ltrInputTextStyle(),
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(
-                            onClick = { if (atCommand.isNotBlank()) vm.sendAt(atCommand.trim()) },
-                            enabled = !state.busy && state.modem.atNode.isNotBlank(),
+                            onClick = ::sendAtFromConsole,
+                            enabled = !state.busy && !state.dynamicBandEnabled && !state.modem.simSelectionRequired && state.modem.atNode.isNotBlank(),
                         ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
                     },
                 )
@@ -219,12 +259,30 @@ fun ToolsScreen(
                         FilledTonalButton(onClick = { atCommand = preset }, shapes = ButtonDefaults.shapes()) { Text(preset) }
                     }
                 }
+                Text("Phone functionality · AT+CFUN", style = MaterialTheme.typography.titleSmallEmphasized)
+                CFUN_MODES.forEach { (command, title, description) ->
+                    FilledTonalButton(
+                        onClick = { atCommand = command },
+                        enabled = !state.dynamicBandEnabled,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("$command · $title")
+                            Text(description, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                Text(
+                    "Choose a preset to fill the AT field; it is not sent until you press Send. CFUN behavior varies by modem firmware and may interrupt mobile service.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
             }
         }
 
         if (state.modem.backend == Backend.QUALCOMM) {
             item {
-                SectionHeader("QMI console")
+                SectionHeader("Engineering console · QMI")
                 Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
@@ -232,6 +290,7 @@ fun ToolsScreen(
                             { qmiService = it.filter(Char::isDigit) },
                             label = { Text("Service") },
                             singleLine = true,
+                            textStyle = ltrInputTextStyle(),
                             modifier = Modifier.weight(1f),
                         )
                         OutlinedTextField(
@@ -239,6 +298,7 @@ fun ToolsScreen(
                             { qmiMessage = it.filter(Char::isLetterOrDigit) },
                             label = { Text("Message (hex)") },
                             singleLine = true,
+                            textStyle = ltrInputTextStyle(),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -247,6 +307,7 @@ fun ToolsScreen(
                         { qmiPayload = it },
                         label = { Text("TLV payload (hex)") },
                         singleLine = true,
+                        textStyle = ltrInputTextStyle(),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = { Text("NAS (service 3) talks to the selected SIM.") },
                         trailingIcon = {
@@ -256,7 +317,7 @@ fun ToolsScreen(
                                     val message = qmiMessage.toIntOrNull(16)
                                     if (service !== null && message !== null) vm.sendQmi(service, message, qmiPayload)
                                 },
-                                enabled = !state.busy,
+                                enabled = !state.busy && !state.dynamicBandEnabled && !state.modem.simSelectionRequired,
                             ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = translateUiText("Send", state.language)) }
                         },
                     )
@@ -344,7 +405,7 @@ fun ToolsScreen(
                         "Exit",
                         "Stop app tasks and close safely.",
                         Icons.Rounded.Close,
-                        enabled = !state.busy && !state.modem.refreshing,
+                        enabled = true,
                         onClick = { vm.exit { (context as? Activity)?.finishAndRemoveTask() } },
                     )
                 }
@@ -355,6 +416,81 @@ fun ToolsScreen(
             SectionHeader("About")
             About()
         }
+    }
+
+    pendingCfunCommand?.let { command ->
+        val mode = command.substringAfter('=').trim()
+        val explanation =
+            CFUN_MODES.firstOrNull { it.first.endsWith("=$mode") }?.let { it.second + ". " + it.third }
+                ?: "CFUN settings can change radio functionality; exact behavior depends on modem firmware."
+        AlertDialog(
+            onDismissRequest = { pendingCfunCommand = null },
+            title = { Text("Confirm modem functionality change") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(command, style = MaterialTheme.typography.titleMediumEmphasized)
+                    Text(explanation)
+                    Text(
+                        "This may interrupt cellular data. The application cannot guarantee a no-disconnect transition.",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingCfunCommand = null
+                        vm.sendAt(command)
+                    },
+                ) { Text("Send anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCfunCommand = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun MenuFact(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodySmallEmphasized, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun RadioAction(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        FilledTonalButton(
+            onClick = onClick,
+            enabled = enabled,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(title, modifier = Modifier.padding(start = 6.dp), maxLines = 1)
+        }
+        Text(
+            description,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
     }
 }
 

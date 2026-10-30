@@ -50,13 +50,5 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-started observe-only cellular and internet quality log" />
         </service>
-            <service
-                android:name=".data.LockActionService"
-                android:exported="false"
-                android:foregroundServiceType="specialUse">
-                <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-triggered modem lock action from notification" />
-            </service>
     </application>
 </manifest>

@@ -78,7 +78,7 @@ object Watchdog {
         subscriptionId: () -> Int,
     ) {
         this.subscriptionId = subscriptionId
-        mutable.update { it.copy(starting = true, error = null) }
+        mutable.update { it.copy(starting = true, verdict = WatchdogVerdict.IDLE, lastSample = null, error = null) }
         val intent = Intent(context, WatchdogService::class.java)
         context.startForegroundService(intent)
     }
