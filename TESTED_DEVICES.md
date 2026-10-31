@@ -10,7 +10,7 @@ These results were reported from real devices. Support may change with firmware,
 | MediaTek AT       | Sometimes  |  ✅  |  ✅   | ✅  | ✅  |
 | Qualcomm QMI      |    Yes     |  ✅  |  ✅   | ✅  | ✅  |
 
-Without root, bunnylock runs through Shizuku. Some MediaTek phones allow AT commands that way, others need root.
+Without root, Darky Lock runs through Shizuku. Some MediaTek phones allow AT commands that way, others need root.
 
 ## Devices
 

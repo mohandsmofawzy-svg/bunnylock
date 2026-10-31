@@ -1,4 +1,4 @@
-دليل ملفات مشروع Bunny Lock
+دليل ملفات مشروع Darky Lock
 ============================
 
 هذا الدليل يصف الملفات الموجودة فعليًا في المستودع، مع التركيز على مسار الواجهة والتحكم بالمودم والإعدادات والعمليات الخلفية.
@@ -31,49 +31,49 @@ modem/build.gradle.kts
 app/src/main/AndroidManifest.xml
 الصلاحيات والتعريف بنشاط التطبيق ومزود Shizuku؛ يجب أن تعكس مكوناته ملفات التنفيذ الفعلية.
 
-app/src/main/java/dev/ririxi/bunnylock/MainActivity.kt
+app/src/main/java/dev/mo/darkylock/MainActivity.kt
 نقطة بدء Compose، طلب الصلاحيات، استقبال إجراء إزالة الأقفال من الإشعار، وتطبيق لغة التطبيق واتجاه RTL.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/App.kt
+app/src/main/java/dev/mo/darkylock/ui/App.kt
 التنقل بين Main وBands وCell lock وMenu عبر شريط علوي مضغوط وقاعدة تنقل عائمة، منتقي الشرائح، تنبيه تأكيد الشريحة، الانتقالات والتحديث الحي.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/MainViewModel.kt
+app/src/main/java/dev/mo/darkylock/ui/MainViewModel.kt
 يربط الواجهة بمتحكم المودم، ينفذ عمليات المستخدم، يحفظ التفضيلات، ويمنع أوامر جديدة عند الخروج أو عند تعذر التحقق من اختيار الشريحة. قبل Dynamic Band Switching يحدّث حالة المودم ثم يستعيد اختيارات المستخدم ويفحص قفل الخلية الفعلي؛ تُقرأ حالة اختيار المشغّل منفصلة ولا تمنع تبديل الباندات ولا يغيّر التطبيق وضع اختيار المشغّل. يختار نطاقات LTE أو NR الموافقة للتقنية النشطة فقط. مع عدة نطاقات، يبدل القفل ويتحقق من تطبيقه والحوامل الخادمة؛ ومع نطاق واحد، يستخدم تحديثات قراءة فقط دون إرسال أوامر تعديل للباند. مدة الدورة محفوظة وتتغير بين الدورات دون إنشاء مؤقتات متداخلة.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/Model.kt
+app/src/main/java/dev/mo/darkylock/ui/Model.kt
 نماذج حالة الواجهة واختيارات الخلايا والنطاقات واللغة.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/Translation.kt
+app/src/main/java/dev/mo/darkylock/ui/Translation.kt
 ترجمة نصوص Compose للإنجليزية والعربية، بما يشمل تسميات وحالات وتحذيرات Dynamic Band Switching، مع عزل اتجاه النص المختلط في RTL لحماية الأرقام والقيم التقنية.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/BandsScreen.kt
+app/src/main/java/dev/mo/darkylock/ui/BandsScreen.kt
 واجهة خطة النطاقات بملخص إجمالي ثم بطاقة Dynamic Band Switching بأيقونة Bunny متحركة اللون، وفواصل جاهزة (10/15/30/45/60 ثانية) ومدة مخصصة محفوظة؛ عند اختيار نطاق واحد يعمل الوضع بقراءات حالة فقط دون إرسال أوامر تعديل للباند. تليها بطاقات المجموعات وبطاقات النطاقات المستطيلة وأدوات التحديد/المفضلة والقفل، ثم إعدادات وضع الشبكة و5G.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/theme/Theme.kt
+app/src/main/java/dev/mo/darkylock/ui/theme/Theme.kt
 لوحة Material الداكنة بخلفية سوداء ودرجات النبيتي للأزرار والعناصر التفاعلية، مع إبقاء سلم ألوان الإشارة مستقلًا.
 
 app/src/main/res/drawable/ic_launcher_foreground.xml
 رسم أمامي أصلي لأرنب بتعبير ابتسامة ماكرة ونبيتي داكن، يستخدمه رمز التطبيق وزر Dynamic.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/ToolsScreen.kt
+app/src/main/java/dev/mo/darkylock/ui/ToolsScreen.kt
 لوحة AT تتضمن اختصارات CFUN=1/2/3 مع تعريف موجز لكل وضع. الاختصار يملأ حقل الأمر ولا يرسله، وتظهر نافذة تأكيد قبل إرسال أي أمر CFUN معروف لاحتمال تأثر خدمة الهاتف.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/CellScreen.kt
+app/src/main/java/dev/mo/darkylock/ui/CellScreen.kt
 واجهة تبدأ بحالة قفل الخلية الحالية، ثم الخلايا القريبة القابلة للتعبئة، ونموذج إنشاء القفل، واختيار PLMN في نهاية مسار الشاشة.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/HomeScreen.kt
+app/src/main/java/dev/mo/darkylock/ui/HomeScreen.kt
 لوحة رئيسية تعرض اتصال الشبكة أولًا، ثم حالة الأقفال وإجراءات Band plan/Cell lock، وتركيب الحوامل، وتشخيص RTT اختياريًا، ثم تفاصيل المودم الثانوية.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/ToolsScreen.kt
+app/src/main/java/dev/mo/darkylock/ui/ToolsScreen.kt
 مركز تحكم يعرض مسار المودم والشريحة والصلاحية، ويجمع إجراءات صيانة الراديو كبطاقات، ثم اختيار الواجهة والتفضيلات ووحدات AT/QMI ومعلومات التشخيص والخروج الآمن.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/Components.kt
+app/src/main/java/dev/mo/darkylock/ui/Components.kt
 عناصر Compose المشتركة، ومنها ألوان البطاقات وحدودها، مجموعات الخيارات، شبكة بطاقات باند مستطيلة بعلامة اختيار وحدود واضحة، الشارات واللوحات، ونمط LTR لإدخالات الأرقام والمعرّفات في RTL.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/Bunny.kt
+app/src/main/java/dev/mo/darkylock/ui/Bunny.kt
 رسوم وحركات شخصية Bunny ومؤشر التحديث.
 
-app/src/main/java/dev/ririxi/bunnylock/ui/theme/Theme.kt
+app/src/main/java/dev/mo/darkylock/ui/theme/Theme.kt
 لوحة التطبيق الداكنة الموحدة: خلفية فحمية باردة، تفاعل بلون فيروزي، ولمسات كهرمانية مع ألوان مستقلة للإشارة.
 
 app/src/main/res/values/strings.xml
@@ -82,93 +82,93 @@ app/src/main/res/values/strings.xml
 app/src/main/res/values-ar/strings.xml
 موارد اسم التطبيق للغة العربية.
 
-app/src/main/java/dev/ririxi/bunnylock/data/LockNotifier.kt
+app/src/main/java/dev/mo/darkylock/data/LockNotifier.kt
 إشعار حالة الأقفال وإجراء Unlock all الذي يعالجه MainActivity وMainViewModel.
 
-app/src/main/java/dev/ririxi/bunnylock/data/Updates.kt
+app/src/main/java/dev/mo/darkylock/data/Updates.kt
 فحص الإصدارات مع مهلات اتصال وقراءة محددة. عنوان API متروك فارغًا عمدًا في LATEST_RELEASE_API_URL داخل Updates.newerThan؛ يوضع الرابط الصالح مستقبلًا في ذلك الثابت، ولا تُفتح روابط غير صالحة.
 
-app/src/main/java/dev/ririxi/bunnylock/watchdog/Watchdog.kt وWatchdogService.kt وWatchdogEngine.kt
+app/src/main/java/dev/mo/darkylock/watchdog/Watchdog.kt وWatchdogService.kt وWatchdogEngine.kt
 مراقبة اختيارية لجودة الشبكة من دون إرسال أوامر للمودم. الخدمة تملك المحرك وتُوقف عند الخروج.
 
 الوصول والصلاحيات
 -----------------
-app/src/main/java/dev/ririxi/bunnylock/shizuku/RootOrShizuku.kt
+app/src/main/java/dev/mo/darkylock/shizuku/RootOrShizuku.kt
 اختيار الوصول المتاح، Root أو Shizuku، وبدء عميل المساعد.
 
-app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuClient.kt
+app/src/main/java/dev/mo/darkylock/shizuku/ShizukuClient.kt
 التواصل مع Shizuku وتشغيل المساعد عبر الخدمة أو shell.
 
-app/src/main/java/dev/ririxi/bunnylock/shizuku/ShizukuService.kt
+app/src/main/java/dev/mo/darkylock/shizuku/ShizukuService.kt
 واجهة خدمة Shizuku التي تشغّل أوامر المساعد.
 
 مكتبة المودم وقفل الترددات
 --------------------------
-modem/src/main/java/dev/ririxi/bunnylock/modem/ModemController.kt
+modem/src/main/java/dev/mo/darkylock/modem/ModemController.kt
 منسق الاتصال والتحديث والأقفال والراديو. يسلسل التغيير وقراءة الحالة وAT وQMI، ويرفض الأوامر بعد بدء الإغلاق أو عندما يكون ربط الشريحة غير مؤكد. يحدّث حالة أقفال الخلية والشبكة إلى UNKNOWN أثناء القراءة أو عند فشلها، ويؤكد CLEAR/ACTIVE من ردود QMI وAT وRadio HAL؛ كما يطابق مخبأ قفل القنوات مع القراءة الفعلية وينظف إدخالات Cell Lock التي لم تعد موجودة. يتيح قفل نطاق مؤقتًا عبر persistOverride=false ليستخدمه التبديل الديناميكي دون تغيير تفضيل الاستمرار بعد إعادة التشغيل. يحفظ Subscription ID وSIM slot والاسم ويتحقق منهما عند الاستعادة؛ يستخدم واجهات Android العامة ولا يعتمد على Phone ID غير المتاح في SDK العام. كما يراقب تغيّر الاشتراكات. لا يعيد أوامر MediaTek التغييرية على مسار آخر عند فشل ملتبس.
 
-modem/src/main/java/dev/ririxi/bunnylock/modem/Model.kt
+modem/src/main/java/dev/mo/darkylock/modem/Model.kt
 نماذج الحالة والواجهات المدعومة وبيانات الجهاز والنطاقات، بما في ذلك حالات قفل الخلية/الشبكة الثلاث: نشط، خالٍ، وغير معروف، وبيانات الاشتراك والمنفذ وطلب تأكيد الشريحة عند فقدان موثوقية الربط.
 
-modem/src/main/java/dev/ririxi/bunnylock/modem/HelperStarter.kt
+modem/src/main/java/dev/mo/darkylock/modem/HelperStarter.kt
 العقد الذي يحدد طريقة بدء عميل المساعد وبيانات الوصول.
 
-modem/src/main/java/dev/ririxi/bunnylock/data/PrivilegedClient.kt
+modem/src/main/java/dev/mo/darkylock/data/PrivilegedClient.kt
 واجهة start/call/stop المشتركة لعملاء Root وShizuku.
 
-modem/src/main/java/dev/ririxi/bunnylock/data/HelperClient.kt
+modem/src/main/java/dev/mo/darkylock/data/HelperClient.kt
 بروتوكول JSON بين التطبيق وRootServer، توزيع الردود حسب رقم الطلب، المهلات، وإرسال exit وإكمال الطلبات المعلقة عند الإغلاق.
 
-modem/src/main/java/dev/ririxi/bunnylock/data/RootClient.kt
+modem/src/main/java/dev/mo/darkylock/data/RootClient.kt
 بدء RootServer عبر su والتحقق من صلاحية root.
 
-modem/src/main/java/dev/ririxi/bunnylock/data/Cells.kt
+modem/src/main/java/dev/mo/darkylock/data/Cells.kt
 قراءة الخلايا المرئية ودمج تقارير مصادر الراديو.
 
-modem/src/main/java/dev/ririxi/bunnylock/data/Carriers.kt
+modem/src/main/java/dev/mo/darkylock/data/Carriers.kt
 تجميع الحوامل وقياسات إشارة الشبكة.
 
-modem/src/main/java/dev/ririxi/bunnylock/core/Bands.kt
+modem/src/main/java/dev/mo/darkylock/core/Bands.kt
 جداول وتحويلات نطاقات وقنوات GSM وWCDMA وLTE وNR؛ مصدر الحسابات التي تعرضها الواجهة.
 
-modem/src/main/java/dev/ririxi/bunnylock/core/Json.kt
+modem/src/main/java/dev/mo/darkylock/core/Json.kt
 مساعدات التعامل مع JSON المستخدم في بروتوكول الأوامر.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/RootServer.kt
+modem/src/main/java/dev/mo/darkylock/root/RootServer.kt
 نقطة تنفيذ المساعد ذي الصلاحيات، توجيه الأوامر إلى واجهة الشركة المصنّعة، وإرجاع JSON.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Aosp.kt
+modem/src/main/java/dev/mo/darkylock/root/Aosp.kt
 عمليات Android Radio HAL، اختيار وضع الشبكة، أقفال القنوات وPLMN وإعادة تشغيل الراديو.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Qualcomm.kt
+modem/src/main/java/dev/mo/darkylock/root/Qualcomm.kt
 عمليات Qualcomm الخاصة بالنطاقات وRAT والخلايا وPLMN عبر QMI.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Qmi.kt
+modem/src/main/java/dev/mo/darkylock/root/Qmi.kt
 عميل QMI الأصلي وفتح/إغلاق اتصال QRTR.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Mediatek.kt
+modem/src/main/java/dev/mo/darkylock/root/Mediatek.kt
 أوامر MediaTek AT لقراءة/تطبيق أقنعة EPBSE وEPBSEH وقفل الخلايا وRAT. يعتمد عدد الحقول على رد المودم ويرفض الردود الناقصة.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/At.kt
+modem/src/main/java/dev/mo/darkylock/root/At.kt
 إرسال أوامر AT إلى منفذ المودم مع مهلة محددة وإغلاق واصف الملف.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Pixel.kt
+modem/src/main/java/dev/mo/darkylock/root/Pixel.kt
 إعدادات قفل النطاقات ووضع 5G الخاصة بأجهزة Pixel Tensor.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Samsung.kt
+modem/src/main/java/dev/mo/darkylock/root/Samsung.kt
 عمليات وضع 5G الخاصة بخدمات Samsung.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/Sys.kt
+modem/src/main/java/dev/mo/darkylock/root/Sys.kt
 قراءة خصائص النظام وتشغيل أوامر shell محددة المهلة.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/PhysicalChannels.kt
+modem/src/main/java/dev/mo/darkylock/root/PhysicalChannels.kt
 قراءة قنوات الراديو الفعلية ومعلوماتها من Android.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/OemHook.kt
+modem/src/main/java/dev/mo/darkylock/root/OemHook.kt
 اكتشاف والتواصل مع واجهات OEM hook.
 عند اختيار ril:1 يمر الأمر من هنا إلى واجهة الشركة المصنّعة بدل فتح TTY.
 
-modem/src/main/java/dev/ririxi/bunnylock/root/OemCallback.kt
+modem/src/main/java/dev/mo/darkylock/root/OemCallback.kt
 استقبال نتائج OEM hook وإرجاعها لطبقة الأمر.
 
 modem/src/main/cpp/CMakeLists.txt

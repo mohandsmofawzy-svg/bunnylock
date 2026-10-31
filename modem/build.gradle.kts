@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.ririxi.bunnylock.modem"
+    namespace = "dev.mo.darkylock.modem"
     compileSdk = 37
     ndkVersion = "29.0.14206865"
 

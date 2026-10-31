@@ -1,8 +1,8 @@
 # modem
 
-The library handling modem stuff for bunnylock. It does band, cell and PLMN locks, network and 5G modes, and diagnostics on Qualcomm, MediaTek, Pixel and the plain Android radio HAL.
+The library handling modem stuff for Darky Lock. It does band, cell and PLMN locks, network and 5G modes, and diagnostics on Qualcomm, MediaTek, Pixel and the plain Android radio HAL.
 
-It doesn't care how you get root. Hand it a helper started with `RootClient` (su), or with your own Shizuku setup. bunnylock's `ShizukuClient` is a good starting point.
+It doesn't care how you get root. Hand it a helper started with `RootClient` (su), or with your own Shizuku setup. Darky Lock's `ShizukuClient` is a good starting point.
 
 ## Setup
 
@@ -34,4 +34,4 @@ modem.refreshNow()
 
 Actions don't refresh the state on their own, so call `refreshNow()` after them.
 
-The module keeps its state in the `bunnylock` shared prefs, including the radio HAL locks it holds. Don't wipe that file.
+The module keeps its state in the `darkylock` shared prefs, including the radio HAL locks it holds. Don't wipe that file.

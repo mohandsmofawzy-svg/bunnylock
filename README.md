@@ -1,36 +1,38 @@
 <p align="center">
-  <img src=".github/banner-readme.png" alt="bunnylock">
+  <img src=".github/banner.png" alt="Darky Lock">
 </p>
 
-bunnylock is an Android app for band, RAT, and cell locking. It talks to the modem through root or Shizuku and picks the best backend available on the phone.
+Darky Lock is an Android app for band, RAT, and cell locking. It talks to the modem through root or Shizuku and picks the best backend available on the phone.
 
 Modems are weird, and vendors rarely implement the same controls in the same way. Something working on one phone does not guarantee that it will work on every phone with the same chipset or Android version.
 
+> **Package ID change:** Darky Lock now uses `dev.mo.darkylock`. Android installs it as a separate app from any existing installation; it will not update the old installation or inherit its app data and Shizuku authorization. Keep the old app installed if you need its saved app settings.
+
 <table>
   <tr>
-    <td align="center"><img src=".github/screenshots/home.jpg" alt="Home screen with the lock status, carriers and signal" width="200"></td>
-    <td align="center"><img src=".github/screenshots/bands.jpg" alt="Bands screen with network mode and band selection" width="200"></td>
-    <td align="center"><img src=".github/screenshots/cells.jpg" alt="Cell lock screen with visible cells" width="200"></td>
-    <td align="center"><img src=".github/screenshots/tools.jpg" alt="Tools screen with backend, radio and console options" width="200"></td>
+    <td align="center"><img src=".github/screenshots/main.jpg" alt="Main screen with the live network dashboard and lock controls" width="180"></td>
+    <td align="center"><img src=".github/screenshots/bands.jpg" alt="Bands screen with the band plan and expandable band groups" width="180"></td>
+    <td align="center"><img src=".github/screenshots/cells.jpg" alt="Cell lock screen with nearby cells and cell-lock controls" width="180"></td>
+    <td align="center"><img src=".github/screenshots/menu.jpg" alt="Menu screen with modem controls and backend selection" width="180"></td>
   </tr>
   <tr>
-    <td align="center">Home</td>
+    <td align="center">Main</td>
     <td align="center">Bands</td>
     <td align="center">Cell lock</td>
-    <td align="center">Tools</td>
+    <td align="center">Menu</td>
   </tr>
 </table>
 
 > [!CAUTION]
-> bunnylock changes low-level modem settings. Some of them stay after a reboot, and modems don't always react the way you'd expect. **You use it at your own risk.**
+> Darky Lock changes low-level modem settings. Some of them stay after a reboot, and modems don't always react the way you'd expect. **You use it at your own risk.**
 >
 > The author isn't responsible for any issues or damage it causes. That includes losing service or messages (emergency calls too), lost data, or a phone that stops working properly. Before you experiment, make sure you know how to undo a change: **Unlock all**, or a network settings reset in your phone's settings.
 >
-> bunnylock is provided "as is", without any warranty. See the [license](LICENSE) for the full terms.
+> Darky Lock is provided "as is", without any warranty. See the [license](LICENSE) for the full terms.
 
 ## Features
 
-Depending on the phone and backend, bunnylock can:
+Depending on the phone and backend, Darky Lock can:
 
 - lock 2G, 3G, 4G, and 5G bands
 - force a RAT, such as 4G only or 5G only
@@ -45,33 +47,33 @@ See [Tested devices](TESTED_DEVICES.md) for combinations that have been tried on
 
 ## Access
 
-bunnylock needs either root or [Shizuku](https://shizuku.rikka.app/). It tries root first and falls back to Shizuku when root is unavailable or denied.
+Darky Lock needs either root or [Shizuku](https://shizuku.rikka.app/). It tries root first and falls back to Shizuku when root is unavailable or denied.
 
-- **Root or Shizuku running as root** gives bunnylock full access to the available modem backend.
+- **Root or Shizuku running as root** gives Darky Lock full access to the available modem backend.
 - **Shizuku started through ADB** can use Android's telephony APIs without root.
 - Some **MediaTek** phones expose an AT-command passthrough through Shizuku, allowing real band and cell locking without root.
 
 ## Backends
 
-bunnylock detects the phone automatically. You can override the backend in **Tools** if the automatic choice is wrong.
+Darky Lock detects the phone automatically. You can override the backend in **Menu** if the automatic choice is wrong.
 
 - **Qualcomm** - talks to the modem over QMI.
 - **MediaTek** - uses the same AT commands as MediaTek EngineerMode.
 - **Pixel Tensor** - uses Shannon modem settings exposed by Pixel firmware.
-- **Samsung Exynos and other devices** - uses Android's radio HAL. On supported Samsung phones, bunnylock can also open the built-in Samsung band menu.
+- **Samsung Exynos and other devices** - uses Android's radio HAL. On supported Samsung phones, Darky Lock can also open the built-in Samsung band menu.
 
 Available features still depend on what the modem and firmware accept. In particular, Android's radio HAL controls are vendor-dependent.
 
 ## Using it
 
-1. Grant root access, or start Shizuku and allow bunnylock to use it.
+1. Grant root access, or start Shizuku and allow Darky Lock to use it.
 2. Pick the SIM you want to control.
 3. Use **Bands** to select bands, or **Cell lock** to enter an EARFCN, ARFCN, or PCI.
-4. Use **Unlock all** on the Home screen to return to the default configuration.
+4. Use **Unlock all** on the Main screen to return to the default configuration.
 
 Locking a band or cell that your carrier does not use can leave the phone without service. **Unlock all** works offline, so keep it in mind while experimenting.
 
-If something fails, copy the diagnostics from **Tools**. They include the detected chipset, backend, available interfaces, and recent operation log.
+If something fails, copy the diagnostics from **Menu**. They include the detected chipset, backend, available interfaces, and recent operation log.
 
 ## Building
 

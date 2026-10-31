@@ -25,6 +25,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "bunnylock"
+rootProject.name = "DarkyLock"
 include(":app")
 include(":modem")

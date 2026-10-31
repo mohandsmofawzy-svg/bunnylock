@@ -22,7 +22,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Bunnylock">
+        android:theme="@style/Theme.DarkyLock">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -48,7 +48,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-started observe-only cellular and internet quality log" />
+                android:value="User-started network request and app-process binding with connectivity diagnostics" />
         </service>
     </application>
 </manifest>

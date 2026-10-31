@@ -17,11 +17,11 @@ val releaseSigning = providers.fileContents(rootProject.layout.projectDirectory.
     ?.let { Properties().apply { load(it.reader()) } }
 
 android {
-    namespace = "dev.ririxi.bunnylock"
+    namespace = "dev.mo.darkylock"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.ririxi.bunnylock"
+        applicationId = "dev.mo.darkylock"
         minSdk = 30
         targetSdk = 37
         versionCode = 1
@@ -58,6 +58,12 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     packaging {
